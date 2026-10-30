@@ -1,0 +1,2849 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#05070f">
+  <meta name="description" content="NeonCalc, calculatrice scientifique néon avec fonctions avancées, matrices et nombres complexes.">
+  <title>NeonCalc — Calculatrice scientifique</title>
+  <style>
+    /* ============ Design tokens ============ */
+    :root {
+      --bg: #05070f;
+      --bg-2: #0a1020;
+      --panel: rgba(15, 23, 42, 0.62);
+      --panel-strong: rgba(15, 23, 42, 0.92);
+      --glass: rgba(255, 255, 255, 0.045);
+      --glass-hover: rgba(255, 255, 255, 0.085);
+      --border: rgba(148, 163, 184, 0.18);
+      --border-strong: rgba(148, 163, 184, 0.32);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --muted-2: #64748b;
+      --accent: #22d3ee;
+      --accent-2: #a855f7;
+      --accent-soft: rgba(34, 211, 238, 0.14);
+      --danger: #fb7185;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --radius-xl: 30px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+      --font-ui: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: "Cascadia Code", "Cascadia Mono", "JetBrains Mono", "Consolas", monospace;
+    }
+
+    /* ============ Base ============ */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: var(--font-ui);
+      background:
+        radial-gradient(1200px 800px at 12% -10%, rgba(34, 211, 238, 0.16), transparent 55%),
+        radial-gradient(1000px 700px at 100% 0%, rgba(168, 85, 247, 0.18), transparent 55%),
+        radial-gradient(900px 600px at 50% 115%, rgba(56, 189, 248, 0.09), transparent 60%),
+        linear-gradient(180deg, #05070f 0%, #070b16 50%, #04060c 100%);
+      background-attachment: fixed;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.22;
+      background-image:
+        linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(ellipse at 50% 20%, black, transparent 75%);
+      z-index: 0;
+    }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    button:not(:disabled) { cursor: pointer; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    ::selection { background: rgba(34, 211, 238, 0.3); }
+    * { scrollbar-width: thin; scrollbar-color: rgba(148, 163, 184, 0.32) transparent; }
+    *::-webkit-scrollbar { width: 8px; height: 8px; }
+    *::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.28); border-radius: 999px; }
+
+    /* ============ Background orbs ============ */
+    .bg-orbs { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.4; animation: drift 18s ease-in-out infinite alternate; }
+    .orb-1 { width: 420px; height: 420px; top: -160px; left: -100px; background: #0891b2; }
+    .orb-2 { width: 360px; height: 360px; top: 10%; right: -120px; background: #7c3aed; animation-delay: -6s; }
+    .orb-3 { width: 320px; height: 320px; bottom: -140px; left: 35%; background: #2563eb; animation-delay: -12s; opacity: 0.25; }
+    @keyframes drift { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(30px, 24px, 0) scale(1.08); } }
+
+    /* ============ Layout ============ */
+    .app { position: relative; z-index: 1; width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 26px 0 36px; }
+    .app-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark {
+      width: 46px; height: 46px; flex: 0 0 auto; border-radius: 15px;
+      display: grid; place-items: center;
+      background: linear-gradient(145deg, rgba(34, 211, 238, 0.2), rgba(168, 85, 247, 0.2));
+      border: 1px solid rgba(34, 211, 238, 0.3);
+      box-shadow: 0 0 26px rgba(34, 211, 238, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      color: #cffafe;
+    }
+    .brand-mark svg { width: 25px; height: 25px; }
+    .brand h1 { margin: 0; font-size: 1.24rem; letter-spacing: -0.02em; line-height: 1.1; }
+    .brand p { margin: 3px 0 0; color: var(--muted-2); font-size: 0.76rem; letter-spacing: 0.02em; }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .pill {
+      border: 1px solid var(--border); background: var(--glass); color: var(--muted);
+      border-radius: 999px; padding: 9px 14px; font-family: var(--font-mono); font-size: 0.78rem;
+      letter-spacing: 0.08em; transition: 0.18s ease;
+    }
+    .pill:hover { background: var(--glass-hover); color: var(--text); border-color: var(--border-strong); }
+    .pill[data-angle="DEG"] { color: #a5f3fc; border-color: rgba(34, 211, 238, 0.4); background: rgba(34, 211, 238, 0.1); }
+    .pill[data-angle="RAD"] { color: #e9d5ff; border-color: rgba(168, 85, 247, 0.45); background: rgba(168, 85, 247, 0.12); }
+    .icon-btn {
+      width: 42px; height: 42px; display: inline-grid; place-items: center;
+      border: 1px solid var(--border); background: var(--glass); color: var(--muted);
+      border-radius: 13px; transition: 0.18s ease; flex: 0 0 auto;
+    }
+    .icon-btn:hover { background: var(--glass-hover); color: var(--text); border-color: var(--border-strong); }
+    .icon-btn svg { width: 19px; height: 19px; }
+    .mobile-only { display: none !important; }
+
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; margin-top: 22px; }
+
+    /* ============ Calculator card ============ */
+    .calculator {
+      position: relative; overflow: hidden;
+      padding: 16px;
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border);
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.022));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+    }
+    .calculator::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(120deg, rgba(34, 211, 238, 0.08), transparent 32%, rgba(168, 85, 247, 0.09));
+    }
+    .calculator > * { position: relative; }
+
+    /* ============ Display ============ */
+    .display {
+      position: relative; overflow: hidden;
+      min-height: 196px;
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 14px 16px 12px;
+      border-radius: 22px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(3, 7, 18, 0.58);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+    .display::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(520px 120px at 82% 0%, rgba(34, 211, 238, 0.1), transparent 70%);
+    }
+    .display-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 24px; position: relative; z-index: 1; }
+    .last-expression {
+      min-width: 0; flex: 1;
+      color: var(--muted-2); font-family: var(--font-mono); font-size: 0.78rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: ltr;
+    }
+    .display-badges { display: flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 7px; border-radius: 999px;
+      border: 1px solid var(--border); background: rgba(255, 255, 255, 0.03);
+      color: var(--muted); font-size: 0.62rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .badge-memory { color: #a5f3fc; border-color: rgba(34, 211, 238, 0.35); background: rgba(34, 211, 238, 0.08); }
+    .badge-button { border: 1px solid var(--border); background: transparent; padding: 3px 7px; cursor: pointer; }
+    .badge-button[aria-pressed="true"] { color: #04101a; background: var(--accent); border-color: var(--accent); }
+    #expression {
+      width: 100%; border: 0; outline: 0; background: transparent;
+      color: var(--text); font-family: var(--font-mono);
+      font-size: clamp(1.18rem, 2.5vw, 1.55rem); font-weight: 500;
+      text-align: right; padding: 4px 0 2px; caret-color: var(--accent);
+      position: relative; z-index: 1; letter-spacing: -0.02em;
+    }
+    #expression::placeholder { color: rgba(148, 163, 184, 0.32); }
+    .result-row { display: flex; align-items: flex-end; justify-content: flex-end; gap: 10px; min-height: 66px; position: relative; z-index: 1; }
+    .result {
+      flex: 1; min-width: 0; text-align: right; white-space: nowrap; overflow-x: auto;
+      font-family: var(--font-mono); font-size: clamp(1.9rem, 5.2vw, 3.1rem);
+      font-weight: 600; line-height: 1.05; letter-spacing: -0.045em; padding: 2px 0;
+      color: var(--text);
+      background: linear-gradient(135deg, #ffffff, #a5f3fc 48%, #d8b4fe);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .result::-webkit-scrollbar { display: none; }
+    .result.is-preview { opacity: 0.66; }
+    .result.has-matrix, .result.is-text { background: none; -webkit-text-fill-color: currentColor; color: var(--text); }
+    .result.is-error { color: var(--danger); background: none; -webkit-text-fill-color: currentColor; }
+    .result.is-small { font-size: clamp(1.2rem, 3.4vw, 1.7rem); letter-spacing: -0.02em; }
+    .result-actions { display: flex; gap: 4px; flex: 0 0 auto; padding-bottom: 5px; }
+    .tiny-btn {
+      border: 1px solid var(--border); background: rgba(255, 255, 255, 0.035);
+      color: var(--muted-2); border-radius: 9px; padding: 5px 8px;
+      font-size: 0.66rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+      transition: 0.16s ease;
+    }
+    .tiny-btn:hover { color: var(--text); background: var(--glass-hover); border-color: var(--border-strong); }
+    .error-line { min-height: 17px; position: relative; z-index: 1; text-align: right; font-size: 0.76rem; color: var(--danger); }
+    .error-line.is-soft { color: var(--muted-2); }
+    .display-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; position: relative; z-index: 1; }
+    .status-hint { color: var(--muted-2); font-size: 0.66rem; letter-spacing: 0.01em; }
+    .memory-value { color: var(--muted); font-family: var(--font-mono); font-size: 0.66rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }
+    .display.is-shaking { animation: shake 0.32s ease; }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 45% { transform: translateX(5px); } 70% { transform: translateX(-3px); } }
+
+    /* ============ Tabs ============ */
+    .tabs {
+      display: flex; gap: 5px; margin: 12px 0 9px; padding: 4px;
+      border-radius: 14px; border: 1px solid var(--border); background: rgba(255, 255, 255, 0.025);
+    }
+    .tab {
+      flex: 1; min-width: 0; border: 0; border-radius: 10px; padding: 8px 6px;
+      background: transparent; color: var(--muted); font-size: 0.78rem; font-weight: 700;
+      letter-spacing: 0.01em; transition: 0.16s ease; white-space: nowrap;
+    }
+    .tab:hover { color: var(--text); background: rgba(255, 255, 255, 0.045); }
+    .tab[aria-selected="true"] {
+      color: var(--text);
+      background: linear-gradient(135deg, rgba(34, 211, 238, 0.17), rgba(168, 85, 247, 0.17));
+      box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.22);
+    }
+    .tab-panel[hidden] { display: none !important; }
+
+    /* ============ Memory + chips ============ */
+    .memory-bar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 7px; }
+    .mem-key {
+      border: 1px solid var(--border); border-radius: 11px; padding: 6px 4px;
+      background: rgba(255, 255, 255, 0.025); color: var(--muted);
+      font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+      transition: 0.15s ease;
+    }
+    .mem-key:hover { background: var(--glass-hover); color: var(--text); border-color: rgba(34, 211, 238, 0.28); }
+    .chips {
+      display: flex; gap: 5px; overflow-x: auto; padding: 1px 0 8px;
+      scrollbar-width: thin;
+    }
+    .chip {
+      flex: 0 0 auto; border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 999px;
+      background: rgba(168, 85, 247, 0.07); color: #ddd6fe;
+      padding: 5px 10px; font-family: var(--font-mono); font-size: 0.69rem; font-weight: 600;
+      transition: 0.15s ease;
+    }
+    .chip:hover { background: rgba(168, 85, 247, 0.16); border-color: rgba(168, 85, 247, 0.4); }
+
+    /* ============ Keypad ============ */
+    .keypad { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
+    .key {
+      position: relative; min-height: 47px; padding: 4px 2px;
+      border-radius: 14px; border: 1px solid rgba(148, 163, 184, 0.15);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.068), rgba(255, 255, 255, 0.022));
+      color: var(--text); font-size: 0.86rem; font-weight: 650;
+      transition: transform 0.07s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      -webkit-tap-highlight-color: transparent; user-select: none;
+    }
+    .key:hover { background: rgba(255, 255, 255, 0.09); border-color: rgba(148, 163, 184, 0.3); }
+    .key:active, .key.is-pressed { transform: translateY(1px) scale(0.985); }
+    .key-num { font-family: var(--font-mono); font-size: 1.12rem; background: linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.04)); }
+    .key-op { color: #cffafe; background: linear-gradient(180deg, rgba(34, 211, 238, 0.17), rgba(34, 211, 238, 0.055)); border-color: rgba(34, 211, 238, 0.23); }
+    .key-fn { color: #ddd6fe; font-size: 0.74rem; background: linear-gradient(180deg, rgba(168, 85, 247, 0.12), rgba(168, 85, 247, 0.035)); border-color: rgba(168, 85, 247, 0.17); }
+    .key-action { color: var(--muted); }
+    .key-danger { color: var(--danger); }
+    .key-equals {
+      grid-column: span 3;
+      border: 0; color: #04101a; font-size: 1.3rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 10px 30px rgba(34, 211, 238, 0.24), inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+    }
+    .key-equals:hover { filter: brightness(1.08); }
+
+    /* ============ Matrix result ============ */
+    .matrix-wrap {
+      display: inline-flex; align-items: stretch; gap: 5px; vertical-align: middle;
+      max-width: 100%; overflow-x: auto; padding: 2px;
+    }
+    .matrix-wrap::before, .matrix-wrap::after {
+      content: ""; flex: 0 0 auto; width: 7px;
+      border: 2px solid rgba(226, 232, 240, 0.72);
+    }
+    .matrix-wrap::before { border-right: 0; border-radius: 8px 0 0 8px; }
+    .matrix-wrap::after { border-left: 0; border-radius: 0 8px 8px 0; }
+    .matrix-grid { display: grid; gap: 3px 13px; padding: 2px 5px; align-items: center; }
+    .matrix-cell { text-align: right; font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
+    .result .matrix-cell { font-size: 0.62em; }
+    .history-result .matrix-cell { font-size: 0.86em; }
+    .matrix-result-large .matrix-cell { font-size: 1.05rem; }
+
+    /* ============ Matrix panel ============ */
+    .matrix-panel { display: flex; flex-direction: column; gap: 9px; }
+    .matrix-row { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+    .matrix-card, .complex-card {
+      border: 1px solid var(--border); border-radius: 16px; padding: 10px;
+      background: rgba(255, 255, 255, 0.025);
+    }
+    .matrix-card h3, .complex-card h3 { margin: 0 0 8px; font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+    .matrix-card.is-disabled { opacity: 0.38; pointer-events: none; }
+    .matrix-dims { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 0.72rem; }
+    .matrix-dims select, .matrix-op, .scalar-input {
+      border: 1px solid var(--border); background: #0a1120; color: var(--text);
+      border-radius: 9px; padding: 6px 7px; font-size: 0.74rem;
+    }
+    .matrix-dims select { width: 48px; }
+    .matrix-editor { display: grid; gap: 5px; overflow-x: auto; padding-bottom: 2px; }
+    .matrix-editor input {
+      width: 100%; min-width: 43px; border: 1px solid var(--border); border-radius: 8px;
+      background: rgba(3, 7, 18, 0.6); color: var(--text);
+      padding: 7px 4px; text-align: center; font-family: var(--font-mono); font-size: 0.8rem;
+    }
+    .matrix-editor input:focus { border-color: var(--accent); outline: 0; box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.14); }
+    .matrix-actions { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+    .btn {
+      border: 1px solid var(--border); border-radius: 11px; padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.04); color: var(--text); font-size: 0.76rem; font-weight: 700;
+      transition: 0.16s ease;
+    }
+    .btn:hover { background: var(--glass-hover); border-color: var(--border-strong); }
+    .btn-primary {
+      border: 0; color: #04101a;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 8px 24px rgba(34, 211, 238, 0.2);
+    }
+    .btn-primary:hover { filter: brightness(1.08); }
+    .btn-danger { color: var(--danger); border-color: rgba(251, 113, 133, 0.3); background: rgba(251, 113, 133, 0.08); }
+    .matrix-result-card {
+      border: 1px solid var(--border); border-radius: 16px; padding: 11px;
+      background: rgba(3, 7, 18, 0.48); min-height: 72px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .matrix-result-card .placeholder { color: var(--muted-2); font-size: 0.74rem; text-align: center; padding: 14px 6px; }
+    .matrix-result-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .matrix-error { color: var(--danger); font-size: 0.76rem; }
+
+    /* ============ Complex panel ============ */
+    .complex-panel { display: flex; flex-direction: column; gap: 9px; }
+    .complex-card p { margin: 0 0 7px; color: var(--muted); font-size: 0.76rem; line-height: 1.5; }
+    .complex-card code { color: #a5f3fc; font-family: var(--font-mono); font-size: 0.74rem; }
+    .example-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .example-btn {
+      border: 1px solid var(--border); border-radius: 10px; padding: 7px 8px;
+      background: rgba(255, 255, 255, 0.03); color: #cffafe; text-align: left;
+      font-family: var(--font-mono); font-size: 0.7rem; transition: 0.15s ease;
+    }
+    .example-btn:hover { background: rgba(34, 211, 238, 0.1); border-color: rgba(34, 211, 238, 0.3); }
+    .switch { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 0.74rem; cursor: pointer; }
+    .switch input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+    /* ============ History ============ */
+    .history-panel {
+      position: sticky; top: 20px;
+      display: flex; flex-direction: column;
+      height: calc(100vh - 180px); min-height: 430px; max-height: 760px;
+      padding: 15px; border-radius: var(--radius-xl);
+      border: 1px solid var(--border);
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.02));
+      box-shadow: var(--shadow); backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+    }
+    .history-header { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
+    .history-header h2 { margin: 0; flex: 1; font-size: 0.95rem; letter-spacing: -0.01em; }
+    .history-header .icon-btn { width: 34px; height: 34px; border-radius: 10px; }
+    .history-clear { border: 0; background: transparent; color: var(--muted-2); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.03em; }
+    .history-clear:hover { color: var(--danger); }
+    .history-list { list-style: none; margin: 0; padding: 0 2px 0 0; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 7px; }
+    .history-item { display: flex; gap: 5px; align-items: stretch; }
+    .history-main {
+      flex: 1; min-width: 0; text-align: left; cursor: pointer;
+      border: 1px solid var(--border); border-radius: 13px; padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.028); display: flex; flex-direction: column; gap: 3px;
+      transition: 0.16s ease;
+    }
+    .history-main:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(34, 211, 238, 0.28); }
+    .history-expr { color: var(--muted); font-family: var(--font-mono); font-size: 0.7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-result { color: var(--text); font-family: var(--font-mono); font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-time { color: var(--muted-2); font-size: 0.6rem; }
+    .history-actions { display: flex; flex-direction: column; gap: 3px; }
+    .history-action {
+      width: 30px; height: 30px; display: grid; place-items: center;
+      border: 1px solid transparent; background: transparent; color: var(--muted-2);
+      border-radius: 8px; transition: 0.15s ease;
+    }
+    .history-action:hover { color: var(--text); background: var(--glass-hover); }
+    .history-action svg { width: 14px; height: 14px; }
+    .history-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; color: var(--muted-2); font-size: 0.74rem; line-height: 1.5; padding: 20px; }
+    .history-empty svg { width: 36px; height: 36px; opacity: 0.4; }
+    .history-backdrop { display: none; }
+
+    /* ============ Footer ============ */
+    .app-footer { margin-top: 18px; display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted-2); font-size: 0.66rem; }
+    .app-footer a { color: var(--muted); text-decoration: none; }
+    .app-footer a:hover { color: var(--accent); }
+
+    /* ============ Dialogs ============ */
+    dialog.dialog {
+      width: min(560px, calc(100vw - 28px)); max-height: min(86vh, 760px);
+      border: 1px solid var(--border-strong); border-radius: 24px;
+      background: linear-gradient(160deg, #0b1324, #060b16 70%);
+      color: var(--text); padding: 22px; box-shadow: 0 40px 100px rgba(0, 0, 0, 0.7);
+    }
+    dialog.dialog::backdrop { background: rgba(2, 6, 23, 0.72); backdrop-filter: blur(7px); }
+    .dialog h2 { margin: 0 0 8px; font-size: 1.12rem; letter-spacing: -0.01em; }
+    .dialog h3 { margin: 15px 0 5px; font-size: 0.82rem; color: #a5f3fc; letter-spacing: 0.02em; }
+    .dialog p, .dialog li { color: var(--muted); font-size: 0.8rem; line-height: 1.55; }
+    .dialog ul { margin: 5px 0; padding-left: 18px; }
+    .dialog code, .dialog kbd {
+      font-family: var(--font-mono); font-size: 0.74rem; color: #cffafe;
+      background: rgba(34, 211, 238, 0.08); border: 1px solid rgba(34, 211, 238, 0.16);
+      border-radius: 5px; padding: 1px 4px;
+    }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 18px; flex-wrap: wrap; }
+    .dialog-scroll { overflow-y: auto; max-height: calc(86vh - 110px); padding-right: 4px; }
+    .test-summary { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); margin-bottom: 10px; font-size: 0.84rem; font-weight: 700; }
+    .test-summary.is-pass { color: #a7f3d0; border-color: rgba(52, 211, 153, 0.3); }
+    .test-summary.is-fail { color: #fecdd3; border-color: rgba(251, 113, 133, 0.35); }
+    .test-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+    .test-item { display: flex; gap: 7px; align-items: flex-start; padding: 6px 8px; border-radius: 8px; font-size: 0.73rem; background: rgba(255, 255, 255, 0.022); }
+    .test-icon { flex: 0 0 auto; font-weight: 800; }
+    .test-item.is-pass .test-icon { color: var(--success); }
+    .test-item.is-fail .test-icon { color: var(--danger); }
+    .test-name { color: var(--muted); }
+    .test-detail { display: block; color: var(--danger); font-family: var(--font-mono); font-size: 0.68rem; margin-top: 2px; white-space: pre-wrap; }
+
+    /* ============ Toast ============ */
+    .toast {
+      position: fixed; left: 50%; bottom: 22px; z-index: 120;
+      transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
+      max-width: calc(100vw - 32px); padding: 10px 16px; border-radius: 999px;
+      border: 1px solid var(--border-strong); background: rgba(8, 15, 30, 0.96);
+      color: var(--text); box-shadow: var(--shadow); font-size: 0.78rem;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+    }
+    .toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+    .toast.is-error { border-color: rgba(251, 113, 133, 0.45); color: #fecdd3; }
+    .toast.is-success { border-color: rgba(52, 211, 153, 0.42); color: #a7f3d0; }
+
+    /* ============ Loading ============ */
+    .loading-overlay {
+      position: fixed; inset: 0; z-index: 300; display: grid; place-items: center;
+      background: #05070f; transition: opacity 0.35s ease;
+    }
+    body:not(.is-loading) .loading-overlay { opacity: 0; pointer-events: none; }
+    .loading-inner { display: flex; flex-direction: column; align-items: center; gap: 14px; color: var(--muted); font-size: 0.78rem; }
+    .loader-ring { width: 38px; height: 38px; border-radius: 50%; border: 2px solid rgba(148, 163, 184, 0.2); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .fatal-banner { border: 1px solid rgba(251, 113, 133, 0.4); background: rgba(251, 113, 133, 0.08); color: #fecdd3; border-radius: 12px; padding: 10px 12px; font-size: 0.78rem; line-height: 1.5; }
+
+    /* ============ Responsive ============ */
+    @media (max-width: 1023px) {
+      .layout { grid-template-columns: minmax(0, 1fr); }
+      .history-panel {
+        position: fixed; z-index: 60; top: 0; right: 0; height: 100dvh; max-height: none;
+        width: min(370px, 94vw); border-radius: 24px 0 0 24px;
+        transform: translateX(105%); transition: transform 0.28s ease;
+        background: linear-gradient(160deg, #0b1324, #060b16 75%);
+      }
+      .history-panel.is-open { transform: translateX(0); }
+      .history-backdrop {
+        display: block; position: fixed; inset: 0; z-index: 55;
+        background: rgba(2, 6, 23, 0.62); backdrop-filter: blur(4px);
+        opacity: 0; pointer-events: none; transition: opacity 0.28s ease;
+      }
+      .history-backdrop.is-open { opacity: 1; pointer-events: auto; }
+      .mobile-only { display: inline-grid !important; }
+      body.history-open { overflow: hidden; }
+    }
+    @media (min-width: 1024px) {
+      .history-backdrop { display: none !important; }
+    }
+    @media (max-width: 720px) {
+      .app { width: calc(100% - 20px); padding: 14px 0 26px; }
+      .brand-mark { width: 40px; height: 40px; border-radius: 13px; }
+      .brand h1 { font-size: 1.08rem; }
+      .brand p { font-size: 0.68rem; }
+      .calculator { padding: 10px; border-radius: 24px; }
+      .display { min-height: 174px; padding: 11px 12px 9px; border-radius: 18px; }
+      .result-row { min-height: 56px; }
+      .keypad { gap: 5px; }
+      .key { min-height: 43px; border-radius: 11px; font-size: 0.78rem; }
+      .key-num { font-size: 1.02rem; }
+      .key-fn { font-size: 0.66rem; }
+      .key-equals { font-size: 1.15rem; }
+      .memory-bar { gap: 5px; }
+      .mem-key { padding: 5px 2px; font-size: 0.62rem; }
+      .tabs { margin: 9px 0 7px; }
+      .tab { padding: 7px 4px; font-size: 0.7rem; }
+      .status-hint { font-size: 0.6rem; }
+      .app-footer { font-size: 0.6rem; }
+    }
+    @media (max-width: 390px) {
+      .app { width: calc(100% - 12px); }
+      .brand p { display: none; }
+      .header-actions { gap: 5px; }
+      .pill { padding: 8px 10px; font-size: 0.7rem; }
+      .icon-btn { width: 38px; height: 38px; }
+      .calculator { padding: 8px; }
+      .display { padding: 10px; }
+      #expression { font-size: 1.08rem; }
+      .result { font-size: 1.75rem; }
+      .key { min-height: 40px; }
+      .key-fn { font-size: 0.6rem; }
+      .chip { padding: 4px 8px; font-size: 0.63rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+    @media (prefers-contrast: more) {
+      :root { --border: rgba(226, 232, 240, 0.42); --muted: #cbd5e1; --muted-2: #94a3b8; }
+    }
+  </style>
+</head>
+<body class="is-loading">
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="2.5" width="16" height="19" rx="3"></rect>
+            <path d="M7.5 6.5h9"></path>
+            <path d="M8 11h.01M12 11h.01M16 11h.01M8 14.5h.01M12 14.5h.01M16 14.5h.01M8 18h.01M12 18h.01M16 18h.01"></path>
+          </svg>
+        </div>
+        <div>
+          <h1>NeonCalc</h1>
+          <p>Calculatrice scientifique</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="angleToggle" class="pill" type="button" data-angle="DEG" aria-label="Mode angulaire : degrés. Cliquer pour passer en radians.">DEG</button>
+        <button id="helpBtn" class="icon-btn" type="button" aria-label="Aide et raccourcis" title="Aide">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9a2.6 2.6 0 1 1 3.7 2.3c-.8.4-1.2 1-1.2 1.9"></path><path d="M12 17h.01"></path></svg>
+        </button>
+        <button id="historyToggle" class="icon-btn mobile-only" type="button" aria-label="Ouvrir l'historique" aria-controls="historyPanel" aria-expanded="false" title="Historique">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path><path d="M12 7v5l3 2"></path></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="calculator" aria-label="Calculatrice NeonCalc">
+        <div class="display" id="display">
+          <div class="display-top">
+            <span class="last-expression" id="lastExpression"></span>
+            <div class="display-badges">
+              <span class="badge" id="angleBadge">DEG</span>
+              <span class="badge badge-memory" id="memoryBadge" hidden>M</span>
+              <button class="badge badge-button mobile-only" id="nativeKeyboardBtn" type="button" aria-pressed="false" aria-label="Activer le clavier du téléphone" title="Clavier du téléphone">ABC</button>
+            </div>
+          </div>
+          <input id="expression" type="text" inputmode="none" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Expression à calculer" placeholder="">
+          <div class="result-row">
+            <output id="result" class="result" aria-live="polite" aria-atomic="true">0</output>
+            <div class="result-actions">
+              <button class="tiny-btn" id="copyResult" type="button" aria-label="Copier le résultat">Copier</button>
+            </div>
+          </div>
+          <div class="error-line" id="errorLine" role="alert" aria-live="assertive"></div>
+          <div class="display-footer">
+            <span class="status-hint" id="statusHint">Virgule = décimale · ; = arguments</span>
+            <span class="memory-value" id="memoryValue" hidden></span>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Modes de la calculatrice">
+          <button class="tab" id="tab-calc" type="button" role="tab" aria-selected="true" aria-controls="panel-calc">Calculs</button>
+          <button class="tab" id="tab-matrix" type="button" role="tab" aria-selected="false" aria-controls="panel-matrix" tabindex="-1">Matrices</button>
+          <button class="tab" id="tab-complex" type="button" role="tab" aria-selected="false" aria-controls="panel-complex" tabindex="-1">Complexes</button>
+        </div>
+
+        <div class="tab-panel" id="panel-calc" role="tabpanel" aria-labelledby="tab-calc">
+          <div class="memory-bar" aria-label="Mémoire">
+            <button class="mem-key" id="memClear" type="button" aria-label="Effacer la mémoire">MC</button>
+            <button class="mem-key" id="memRecall" type="button" aria-label="Rappeler la mémoire">MR</button>
+            <button class="mem-key" id="memAdd" type="button" aria-label="Ajouter à la mémoire">M+</button>
+            <button class="mem-key" id="memSub" type="button" aria-label="Soustraire de la mémoire">M−</button>
+          </div>
+          <div class="chips" id="chips" aria-label="Fonctions complémentaires">
+            <button class="chip" type="button" data-chip="floor" aria-label="Partie entière inférieure">⌊x⌋</button>
+            <button class="chip" type="button" data-chip="ceil" aria-label="Partie entière supérieure">⌈x⌉</button>
+            <button class="chip" type="button" data-chip="round" aria-label="Arrondir">round</button>
+            <button class="chip" type="button" data-chip="random" aria-label="Nombre aléatoire">rand</button>
+            <button class="chip" type="button" data-chip="re" aria-label="Partie réelle">re</button>
+            <button class="chip" type="button" data-chip="im" aria-label="Partie imaginaire">im</button>
+            <button class="chip" type="button" data-chip="arg" aria-label="Argument d'un complexe">arg</button>
+            <button class="chip" type="button" data-chip="conj" aria-label="Conjugué">conj</button>
+            <button class="chip" type="button" data-chip="log2" aria-label="Logarithme base 2">log₂</button>
+            <button class="chip" type="button" data-chip="semicolon" aria-label="Séparateur d'arguments">;</button>
+          </div>
+          <div class="keypad" id="keypad" aria-label="Clavier de la calculatrice"></div>
+        </div>
+
+        <div class="tab-panel" id="panel-matrix" role="tabpanel" aria-labelledby="tab-matrix" hidden>
+          <div class="matrix-panel">
+            <div class="matrix-row">
+              <div class="matrix-dims">
+                <span>A</span>
+                <select id="rowsA" aria-label="Nombre de lignes de A"></select>
+                <span>×</span>
+                <select id="colsA" aria-label="Nombre de colonnes de A"></select>
+                <button class="btn" id="identityA" type="button">Identité</button>
+                <button class="btn" id="clearA" type="button">Vider</button>
+              </div>
+            </div>
+            <div class="matrix-card">
+              <h3>Matrice A</h3>
+              <div class="matrix-editor" id="gridA"></div>
+            </div>
+            <div class="matrix-row">
+              <div class="matrix-dims">
+                <span>B</span>
+                <select id="rowsB" aria-label="Nombre de lignes de B"></select>
+                <span>×</span>
+                <select id="colsB" aria-label="Nombre de colonnes de B"></select>
+                <button class="btn" id="identityB" type="button">Identité</button>
+                <button class="btn" id="clearB" type="button">Vider</button>
+              </div>
+            </div>
+            <div class="matrix-card" id="cardB">
+              <h3>Matrice B</h3>
+              <div class="matrix-editor" id="gridB"></div>
+            </div>
+            <div class="matrix-actions">
+              <select class="matrix-op" id="matrixOp" aria-label="Opération matricielle"></select>
+              <label class="matrix-dims" id="scalarWrap" hidden>k <input class="scalar-input" id="scalarK" type="text" inputmode="decimal" value="2" aria-label="Scalaire k" style="width:64px"></label>
+              <button class="btn btn-primary" id="computeMatrix" type="button">Calculer</button>
+            </div>
+            <div class="matrix-result-card" id="matrixResult" aria-live="polite">
+              <div class="placeholder">Le résultat apparaîtra ici.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="panel-complex" role="tabpanel" aria-labelledby="tab-complex" hidden>
+          <div class="complex-panel">
+            <div class="complex-card">
+              <h3>Nombres complexes</h3>
+              <p>Utilise <code>i</code> comme unité imaginaire. Les fonctions <code>re</code>, <code>im</code>, <code>arg</code>, <code>conj</code> et <code>abs</code> sont disponibles.</p>
+              <div class="example-grid">
+                <button class="example-btn" type="button" data-example="(2+3i)*(4-i)">(2+3i) × (4−i)</button>
+                <button class="example-btn" type="button" data-example="sqrt(-4)">√(−4)</button>
+                <button class="example-btn" type="button" data-example="abs(3+4i)">|3+4i|</button>
+                <button class="example-btn" type="button" data-example="arg(1+i)">arg(1+i)</button>
+                <button class="example-btn" type="button" data-example="i^2">i²</button>
+                <button class="example-btn" type="button" data-example="conj(2+3i)">conj(2+3i)</button>
+              </div>
+            </div>
+            <div class="complex-card">
+              <h3>Affichage</h3>
+              <label class="switch"><input type="checkbox" id="polarToggle"> Afficher les résultats complexes en polaire</label>
+            </div>
+            <div class="complex-card">
+              <h3>Rappel</h3>
+              <p><code>i² = −1</code> · <code>arg</code> est exprimé dans l'unité d'angle active. Les fonctions trigonométriques des complexes restent en radians.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="history-panel" id="historyPanel" aria-label="Historique des calculs">
+        <div class="history-header">
+          <h2>Historique</h2>
+          <button class="history-clear" id="clearHistory" type="button">Effacer</button>
+          <button class="icon-btn mobile-only" id="closeHistory" type="button" aria-label="Fermer l'historique">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+          </button>
+        </div>
+        <div class="history-empty" id="historyEmpty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path><path d="M12 7v5l3 2"></path></svg>
+          <span>Vos calculs apparaîtront ici.<br>Cliquez sur une entrée pour la réutiliser.</span>
+        </div>
+        <ol class="history-list" id="historyList" aria-live="polite"></ol>
+      </aside>
+    </main>
+
+    <footer class="app-footer">
+      <span>NeonCalc · moteur math.js</span>
+      <a href="?test=1">Tests du moteur</a>
+    </footer>
+  </div>
+
+  <div class="history-backdrop" id="historyBackdrop"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-inner">
+      <div class="loader-ring" aria-hidden="true"></div>
+      <span>Chargement du moteur de calcul…</span>
+    </div>
+  </div>
+
+  <dialog class="dialog" id="helpDialog" aria-labelledby="helpTitle">
+    <h2 id="helpTitle">Aide & raccourcis</h2>
+    <div class="dialog-scroll">
+      <h3>Saisie</h3>
+      <ul>
+        <li><code>,</code> est la virgule décimale française : <code>1,5 + 2</code>.</li>
+        <li><code>;</code> sépare les arguments : <code>log(8; 2)</code>, <code>combinations(5; 2)</code>.</li>
+        <li>La multiplication implicite est acceptée : <code>2π</code>, <code>3(4+5)</code>, <code>2sin(30)</code>.</li>
+        <li><code>%</code> est contextuel : <code>200+10% = 220</code>, <code>200×10% = 20</code>, <code>8%3 = 2</code>.</li>
+      </ul>
+      <h3>Fonctions</h3>
+      <ul>
+        <li><code>log</code> = base 10, <code>ln</code> = népérien, <code>log(x; b)</code> = base personnalisée.</li>
+        <li><code>nCr</code> → <code>combinations(n; k)</code>, <code>nPr</code> → <code>permutations(n; k)</code>.</li>
+        <li><code>i</code> est l'unité imaginaire ; <code>re</code>, <code>im</code>, <code>arg</code>, <code>conj</code>, <code>abs</code> sont disponibles.</li>
+      </ul>
+      <h3>Clavier</h3>
+      <ul>
+        <li><kbd>Entrée</kbd> calcule et ajoute à l'historique.</li>
+        <li><kbd>Échap</kbd> efface la saisie ; <kbd>Ctrl</kbd>+<kbd>Retour arrière</kbd> efface tout.</li>
+        <li><kbd>?</kbd> ouvre cette aide. <kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>V</kbd> fonctionnent normalement.</li>
+      </ul>
+      <h3>Mémoire et matrices</h3>
+      <ul>
+        <li><code>M+</code>, <code>M−</code>, <code>MR</code>, <code>MC</code> agissent sur les résultats scalaires.</li>
+        <li>Les matrices se saisissent dans l'onglet Matrices (2×2 à 4×4), sans syntaxe texte.</li>
+        <li><code>ans</code> contient le dernier résultat et peut être une matrice.</li>
+      </ul>
+    </div>
+    <div class="dialog-actions">
+      <a class="btn" href="?test=1">Tests du moteur</a>
+      <button class="btn btn-primary" type="button" id="helpClose">Fermer</button>
+    </div>
+  </dialog>
+
+  <dialog class="dialog" id="confirmDialog" aria-labelledby="confirmTitle">
+    <h2 id="confirmTitle">Confirmation</h2>
+    <p id="confirmMessage"></p>
+    <div class="dialog-actions">
+      <button class="btn" type="button" id="confirmCancel">Annuler</button>
+      <button class="btn btn-danger" type="button" id="confirmOk">Confirmer</button>
+    </div>
+  </dialog>
+
+  <dialog class="dialog" id="testDialog" aria-labelledby="testTitle">
+    <h2 id="testTitle">Tests du moteur</h2>
+    <div class="dialog-scroll" id="testContent"></div>
+    <div class="dialog-actions">
+      <button class="btn" type="button" id="testRerun">Relancer</button>
+      <button class="btn btn-primary" type="button" id="testClose">Fermer</button>
+    </div>
+  </dialog>
+
+  <noscript>
+    <div style="position:fixed;inset:0;z-index:400;display:grid;place-items:center;background:#05070f;color:#f8fafc;padding:24px;text-align:center">
+      NeonCalc a besoin de JavaScript pour fonctionner. Activez-le puis rechargez la page.
+    </div>
+  </noscript>
+
+  <script>
+    (() => {
+      'use strict';
+
+      /* ================= Constants & state ================= */
+      const STORAGE_KEYS = {
+        history: 'neoncalc.history.v1',
+        settings: 'neoncalc.settings.v1'
+      };
+      const MAX_HISTORY = 50;
+      const MAX_EXPR_LENGTH = 500;
+      const CDN_URLS = [
+        'https://cdn.jsdelivr.net/npm/mathjs@15.2.0/lib/browser/math.min.js',
+        'https://unpkg.com/mathjs@15.2.0/lib/browser/math.js',
+        'https://cdn.jsdelivr.net/npm/mathjs@15.2.0/lib/browser/math.js'
+      ];
+
+      const state = {
+        angle: 'DEG',
+        memory: 0,
+        ans: 0,
+        lastResult: null,
+        lastExpression: '',
+        preview: null,
+        previewError: null,
+        history: [],
+        activeTab: 'calc',
+        complexMode: 'rect',
+        nativeKeyboard: false,
+        matrix: {
+          rowsA: 2, colsA: 2, rowsB: 2, colsB: 2,
+          a: [['1', '0'], ['0', '1']],
+          b: [['1', '0'], ['0', '1']],
+          op: 'add', scalar: '2', result: null, error: '', label: ''
+        }
+      };
+
+      let mj = null;
+      let storageAvailable = true;
+      let toastTimer = null;
+      let frNumberFormatter = null;
+      const els = {};
+
+      /* ================= DOM helpers ================= */
+      const byId = (id) => document.getElementById(id);
+
+      function cacheElements() {
+        [
+          'display', 'expression', 'result', 'errorLine', 'lastExpression',
+          'angleBadge', 'angleToggle', 'memoryBadge', 'memoryValue',
+          'nativeKeyboardBtn', 'copyResult', 'statusHint',
+          'keypad', 'chips', 'memClear', 'memRecall', 'memAdd', 'memSub',
+          'tab-calc', 'tab-matrix', 'tab-complex',
+          'panel-calc', 'panel-matrix', 'panel-complex',
+          'rowsA', 'colsA', 'gridA', 'identityA', 'clearA',
+          'rowsB', 'colsB', 'gridB', 'identityB', 'clearB', 'cardB',
+          'matrixOp', 'scalarWrap', 'scalarK', 'computeMatrix', 'matrixResult',
+          'polarToggle',
+          'historyPanel', 'historyList', 'historyEmpty', 'clearHistory',
+          'historyToggle', 'closeHistory', 'historyBackdrop',
+          'helpBtn', 'helpDialog', 'helpClose',
+          'confirmDialog', 'confirmTitle', 'confirmMessage', 'confirmCancel', 'confirmOk',
+          'testDialog', 'testContent', 'testRerun', 'testClose',
+          'toast', 'loadingOverlay'
+        ].forEach((id) => { els[id] = byId(id); });
+        els.tabs = [byId('tab-calc'), byId('tab-matrix'), byId('tab-complex')];
+        els.panels = {
+          calc: byId('panel-calc'),
+          matrix: byId('panel-matrix'),
+          complex: byId('panel-complex')
+        };
+      }
+
+      /* ================= Generic utilities ================= */
+      function escapeHTML(value) {
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function normalizeSpaces(text) {
+        return String(text).replace(/[\u00a0\u202f\u2009\u2007]/g, ' ');
+      }
+
+      function getNumberFormatter() {
+        if (!frNumberFormatter) {
+          frNumberFormatter = new Intl.NumberFormat('fr-FR', {
+            maximumFractionDigits: 12,
+            useGrouping: true
+          });
+        }
+        return frNumberFormatter;
+      }
+
+      const SUPERSCRIPT = {
+        '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+        '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '-': '⁻'
+      };
+      function toSuperscript(text) {
+        return String(text).split('').map((ch) => SUPERSCRIPT[ch] || ch).join('');
+      }
+
+      function formatScientific(n) {
+        const [mantissaRaw, exponentRaw] = Math.abs(n).toExponential(11).split('e');
+        let mantissa = mantissaRaw.replace(/\.?0+$/, '').replace('.', ',');
+        const exponent = Number(exponentRaw);
+        const expSign = exponent < 0 ? '-' : '';
+        const expDigits = String(Math.abs(exponent));
+        const sign = n < 0 ? '−' : '';
+        return `${sign}${mantissa} × 10${toSuperscript(expSign + expDigits)}`;
+      }
+
+      function formatNumber(n) {
+        if (typeof n !== 'number') return String(n);
+        if (Number.isNaN(n)) return 'Indéfini';
+        if (n === Infinity) return '∞';
+        if (n === -Infinity) return '−∞';
+        if (Object.is(n, -0)) n = 0;
+        const abs = Math.abs(n);
+        if (abs !== 0 && (abs >= 1e12 || abs < 1e-9)) return formatScientific(n);
+        const rounded = Number.parseFloat(n.toPrecision(12));
+        if (Object.is(rounded, -0)) return '0';
+        return getNumberFormatter().format(rounded);
+      }
+
+      function formatComplex(value) {
+        let re = value.re;
+        let im = value.im;
+        if (Object.is(re, -0)) re = 0;
+        if (Object.is(im, -0)) im = 0;
+        if (im === 0) return formatNumber(re);
+        const imAbs = Math.abs(im);
+        const imText = (imAbs === 1 ? '' : formatNumber(imAbs)) + 'i';
+        if (re === 0) return (im < 0 ? '−' : '') + imText;
+        return `${formatNumber(re)} ${im < 0 ? '−' : '+'} ${imText}`;
+      }
+
+      function formatPolar(value) {
+        const r = Math.hypot(value.re, value.im);
+        let theta = Math.atan2(value.im, value.re);
+        if (state.angle === 'DEG') theta = theta * 180 / Math.PI;
+        return `${formatNumber(r)} ∠ ${formatNumber(theta)}${state.angle === 'DEG' ? '°' : ' rad'}`;
+      }
+
+      function cellText(value) {
+        if (typeof value === 'number') return String(Object.is(value, -0) ? 0 : value);
+        if (!value) return '';
+        if (value.isComplex) return `${value.re}${value.im < 0 ? '' : '+'}${value.im}i`;
+        if (typeof value === 'boolean') return value ? 'true' : 'false';
+        return String(value);
+      }
+
+      function matrixText(data) {
+        const rows = Array.isArray(data) ? data : [[data]];
+        const normalized = rows.map((row) => (Array.isArray(row) ? row : [row]));
+        return '[' + normalized.map((row) => '[' + row.map(cellText).join(', ') + ']').join(', ') + ']';
+      }
+
+      function matrixHTML(data, options = {}) {
+        const rows = Array.isArray(data) ? data : [[data]];
+        const normalized = rows.map((row) => (Array.isArray(row) ? row : [row]));
+        const cols = normalized.reduce((max, row) => Math.max(max, row.length), 1);
+        const cells = normalized.map((row) => {
+          const padded = row.slice();
+          while (padded.length < cols) padded.push('');
+          return padded.map((cell) => {
+            let text;
+            if (cell && cell.isComplex) {
+              text = state.complexMode === 'polar' ? formatPolar(cell) : formatComplex(cell);
+            } else if (typeof cell === 'number') {
+              text = formatNumber(cell);
+            } else {
+              text = escapeHTML(cellText(cell));
+            }
+            return `<span class="matrix-cell">${text}</span>`;
+          }).join('');
+        }).join('');
+        const label = options.label || matrixText(data);
+        return `<span class="matrix-wrap" role="img" aria-label="${escapeHTML(label)}"><span class="matrix-grid" style="grid-template-columns:repeat(${cols},auto)">${cells}</span></span>`;
+      }
+
+      function renderValueHTML(value) {
+        if (typeof value === 'number') return escapeHTML(formatNumber(value));
+        if (typeof value === 'boolean') return value ? 'Vrai' : 'Faux';
+        if (value && value.isComplex) {
+          return escapeHTML(state.complexMode === 'polar' ? formatPolar(value) : formatComplex(value));
+        }
+        if (value && value.isMatrix) return matrixHTML(value.toArray());
+        if (Array.isArray(value)) return matrixHTML(value);
+        if (value === undefined || value === null) return '—';
+        return escapeHTML(valueToText(value));
+      }
+
+      function valueToText(value) {
+        if (typeof value === 'number') return String(Object.is(value, -0) ? 0 : value);
+        if (typeof value === 'boolean') return value ? 'true' : 'false';
+        if (value && value.isComplex) {
+          const re = value.re;
+          const im = value.im;
+          if (im === 0) return String(re);
+          if (re === 0) return `${im}i`;
+          return `${re}${im < 0 ? '' : '+'}${im}i`;
+        }
+        if (value && value.isMatrix) return matrixText(value.toArray());
+        if (Array.isArray(value)) return matrixText(value);
+        if (value === undefined || value === null) return '';
+        return String(value);
+      }
+
+      function serializeArray(data) {
+        if (!Array.isArray(data)) return serializeValue(data);
+        return data.map((entry) => (Array.isArray(entry) ? serializeArray(entry) : serializeValue(entry)));
+      }
+
+      function serializeValue(value) {
+        if (typeof value === 'number') {
+          if (Number.isNaN(value)) return { type: 'special', value: 'nan' };
+          if (value === Infinity) return { type: 'special', value: 'inf' };
+          if (value === -Infinity) return { type: 'special', value: '-inf' };
+          return { type: 'number', value };
+        }
+        if (typeof value === 'boolean') return { type: 'boolean', value };
+        if (value && value.isComplex) return { type: 'complex', re: value.re, im: value.im };
+        if (value && value.isMatrix) return { type: 'matrix', data: serializeArray(value.toArray()) };
+        if (Array.isArray(value)) return { type: 'matrix', data: serializeArray(value) };
+        return { type: 'string', value: valueToText(value) };
+      }
+
+      function deserializeArray(data) {
+        return data.map((entry) => {
+          if (Array.isArray(entry)) return deserializeArray(entry);
+          return deserializeValue(entry);
+        });
+      }
+
+      function deserializeValue(descriptor) {
+        if (!descriptor || typeof descriptor !== 'object') return Number(descriptor) || 0;
+        if (descriptor.type === 'number') return descriptor.value;
+        if (descriptor.type === 'boolean') return descriptor.value;
+        if (descriptor.type === 'special') {
+          if (descriptor.value === 'inf') return Infinity;
+          if (descriptor.value === '-inf') return -Infinity;
+          return NaN;
+        }
+        if (descriptor.type === 'complex') return mj.complex(descriptor.re, descriptor.im);
+        if (descriptor.type === 'matrix') return mj.matrix(deserializeArray(descriptor.data || []));
+        return descriptor.value;
+      }
+
+      /* ================= Storage ================= */
+      function storageGet(key, fallback) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (!raw) return fallback;
+          return JSON.parse(raw);
+        } catch (error) {
+          storageAvailable = false;
+          return fallback;
+        }
+      }
+
+      function storageSet(key, value) {
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+          return true;
+        } catch (error) {
+          storageAvailable = false;
+          return false;
+        }
+      }
+
+      function saveSettings() {
+        storageSet(STORAGE_KEYS.settings, {
+          angle: state.angle,
+          memory: state.memory,
+          activeTab: state.activeTab,
+          complexMode: state.complexMode
+        });
+      }
+
+      function loadSettings() {
+        const settings = storageGet(STORAGE_KEYS.settings, {});
+        if (settings && (settings.angle === 'DEG' || settings.angle === 'RAD')) state.angle = settings.angle;
+        if (settings && Number.isFinite(settings.memory)) state.memory = settings.memory;
+        if (settings && ['calc', 'matrix', 'complex'].includes(settings.activeTab)) state.activeTab = settings.activeTab;
+        if (settings && (settings.complexMode === 'rect' || settings.complexMode === 'polar')) state.complexMode = settings.complexMode;
+      }
+
+      function loadHistory() {
+        const stored = storageGet(STORAGE_KEYS.history, []);
+        if (!Array.isArray(stored)) return;
+        state.history = stored
+          .filter((entry) => entry && typeof entry === 'object' && typeof entry.expression === 'string' && entry.result)
+          .slice(0, MAX_HISTORY);
+      }
+
+      function saveHistory() {
+        storageSet(STORAGE_KEYS.history, state.history);
+      }
+
+      /* ================= UI utilities ================= */
+      function showToast(message, type = 'info') {
+        if (!els.toast) return;
+        clearTimeout(toastTimer);
+        els.toast.textContent = message;
+        els.toast.className = 'toast is-visible' + (type === 'error' ? ' is-error' : type === 'success' ? ' is-success' : '');
+        toastTimer = setTimeout(() => {
+          els.toast.classList.remove('is-visible');
+        }, 2600);
+      }
+
+      function fallbackCopy(text) {
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        area.style.pointerEvents = 'none';
+        document.body.appendChild(area);
+        area.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (error) { ok = false; }
+        area.remove();
+        return ok;
+      }
+
+      async function copyText(text) {
+        if (!text) {
+          showToast('Rien à copier.', 'error');
+          return;
+        }
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            showToast('Copié dans le presse-papiers.', 'success');
+            return;
+          }
+        } catch (error) {
+          // Fall through to the legacy path.
+        }
+        if (fallbackCopy(text)) showToast('Copié dans le presse-papiers.', 'success');
+        else showToast('Copie impossible dans ce navigateur.', 'error');
+      }
+
+      function shakeDisplay() {
+        if (!els.display) return;
+        els.display.classList.remove('is-shaking');
+        void els.display.offsetWidth;
+        els.display.classList.add('is-shaking');
+        setTimeout(() => els.display.classList.remove('is-shaking'), 380);
+      }
+
+      /* ================= Math engine loading ================= */
+      function loadScript(url) {
+        return new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = url;
+          script.async = true;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error('Échec du chargement : ' + url));
+          document.head.appendChild(script);
+        });
+      }
+
+      async function loadMath() {
+        if (window.math) return window.math;
+        let lastError = null;
+        for (const url of CDN_URLS) {
+          try {
+            await loadScript(url);
+            if (window.math) return window.math;
+          } catch (error) {
+            lastError = error;
+          }
+        }
+        throw lastError || new Error('Moteur math.js indisponible.');
+      }
+
+      function setupMath() {
+        if (window.math && typeof window.math.create === 'function' && window.math.all) {
+          mj = window.math.create(window.math.all, { number: 'number', precision: 64 });
+        } else {
+          mj = window.math;
+        }
+        if (!mj || typeof mj.evaluate !== 'function') {
+          throw new Error('Le moteur math.js ne répond pas.');
+        }
+        // Smoke test: the parser must be functional.
+        if (mj.evaluate('2 + 2') !== 4) throw new Error('Le moteur math.js est incomplet.');
+      }
+
+      /* ================= Math wrappers ================= */
+      function mapElements(value, fn) {
+        if (value && value.isMatrix) {
+          return value.map((entry) => mapElements(entry, fn));
+        }
+        if (Array.isArray(value)) {
+          return value.map((entry) => mapElements(entry, fn));
+        }
+        return fn(value);
+      }
+
+      function toRadValue(value, angleMode) {
+        if (angleMode !== 'DEG') return value;
+        if (typeof value === 'number') return value * Math.PI / 180;
+        return value;
+      }
+
+      function fromRadValue(value, angleMode) {
+        if (angleMode !== 'DEG') return value;
+        if (typeof value === 'number') return value * 180 / Math.PI;
+        return value;
+      }
+
+      function tanValue(value, angleMode) {
+        return mapElements(value, (entry) => {
+          if (angleMode === 'DEG' && typeof entry === 'number') {
+            const normalized = ((entry % 180) + 180) % 180;
+            if (Math.abs(normalized - 90) < 1e-12) return Infinity;
+          }
+          return mj.tan(toRadValue(entry, angleMode));
+        });
+      }
+
+      function logValue(value, base) {
+        if (base === undefined) return mj.log10(value);
+        return mj.log(value, base);
+      }
+
+      function makeScope(angleMode) {
+        const mode = angleMode || state.angle;
+        return {
+          ans: state.ans,
+          M: state.memory,
+          sin: (value) => mapElements(value, (entry) => mj.sin(toRadValue(entry, mode))),
+          cos: (value) => mapElements(value, (entry) => mj.cos(toRadValue(entry, mode))),
+          tan: (value) => tanValue(value, mode),
+          asin: (value) => mapElements(value, (entry) => fromRadValue(mj.asin(entry), mode)),
+          acos: (value) => mapElements(value, (entry) => fromRadValue(mj.acos(entry), mode)),
+          atan: (value) => mapElements(value, (entry) => fromRadValue(mj.atan(entry), mode)),
+          atan2: (y, x) => fromRadValue(mj.atan2(y, x), mode),
+          arg: (value) => mapElements(value, (entry) => fromRadValue(mj.arg(entry), mode)),
+          log: logValue,
+          ln: (value) => mj.log(value),
+          log2: (value) => mj.log2(value)
+        };
+      }
+
+      /* ================= Input normalization ================= */
+      class CalcError extends Error {
+        constructor(message) {
+          super(message);
+          this.name = 'CalcError';
+        }
+      }
+
+      const BLOCKED_IDENTIFIERS = new Set([
+        'import', 'create', 'config', 'typed', 'evaluate', 'parse', 'simplify',
+        'derivative', 'help', 'resolve', 'compile', 'parser', 'chain', 'factory',
+        'reviver', 'json', 'to', 'in', 'console', 'print'
+      ]);
+
+      function normalizeExpression(raw) {
+        let expr = String(raw == null ? '' : raw).trim();
+        if (!expr) throw new CalcError('Saisis un calcul.');
+        if (expr.length > MAX_EXPR_LENGTH) {
+          throw new CalcError(`Expression trop longue (${MAX_EXPR_LENGTH} caractères maximum).`);
+        }
+
+        expr = expr.replace(/[\r\n\t]+/g, ' ');
+        expr = normalizeSpaces(expr);
+
+        // French thousands separators, including pasted narrow spaces.
+        let previous;
+        do {
+          previous = expr;
+          expr = expr.replace(/(\d)[ ](?=\d{3}(?:[ .,]|$))/g, '$1');
+        } while (expr !== previous);
+
+        expr = expr
+          .replace(/×/g, '*')
+          .replace(/÷/g, '/')
+          .replace(/[−–—]/g, '-')
+          .replace(/π/g, 'pi')
+          .replace(/√/g, 'sqrt')
+          .replace(/∛/g, 'cbrt')
+          .replace(/²/g, '^2')
+          .replace(/³/g, '^3')
+          .replace(/∞/g, 'Infinity')
+          .replace(/\*\*/g, '^');
+
+        // In NeonCalc, commas are decimal marks and semicolons separate arguments.
+        expr = expr.replace(/,/g, '.').replace(/;/g, ',');
+
+        if (/[\[\]{}"']/.test(expr)) {
+          throw new CalcError("Utilise l'onglet Matrices pour les matrices. Les guillemets et accolades ne sont pas pris en charge.");
+        }
+        if (/(^|[^=!<>])=([^=]|$)/.test(expr)) {
+          throw new CalcError("Les affectations de variables ne sont pas prises en charge.");
+        }
+
+        const identifiers = expr.match(/[A-Za-z_][A-Za-z0-9_]*/g) || [];
+        for (const identifier of identifiers) {
+          if (BLOCKED_IDENTIFIERS.has(identifier)) {
+            throw new CalcError(`La fonction « ${identifier} » n'est pas disponible dans la calculatrice.`);
+          }
+        }
+
+        let depth = 0;
+        for (const character of expr) {
+          if (character === '(') depth += 1;
+          if (character === ')') depth -= 1;
+          if (depth < 0) throw new CalcError('Parenthèse fermante sans parenthèse ouvrante.');
+        }
+
+        return expr;
+      }
+
+      function isProbablyIncomplete(raw) {
+        const expr = normalizeSpaces(String(raw || '')).trim();
+        if (!expr) return true;
+        if (/[+\-*/^×÷−.,;(]$/.test(expr)) return true;
+        const open = (expr.match(/\(/g) || []).length;
+        const close = (expr.match(/\)/g) || []).length;
+        return open > close;
+      }
+
+      function translateError(error) {
+        if (error instanceof CalcError) return error.message;
+        const message = String((error && error.message) || error || '');
+        const undefinedMatch = message.match(/Undefined (?:symbol|function)\s+["']?([A-Za-z_][A-Za-z0-9_]*)["']?/i);
+        if (undefinedMatch) return `Symbole inconnu : ${undefinedMatch[1]}.`;
+        if (/Unexpected end|Value expected|Parenthesis|Unexpected part|SyntaxError|Expected/i.test(message)) {
+          return 'Expression incomplète ou invalide. Vérifie les parenthèses et les opérateurs.';
+        }
+        if (/Dimension mismatch|Dimensions mismatch|size mismatch|dimensions must match/i.test(message)) {
+          return 'Dimensions de matrices incompatibles.';
+        }
+        if (/must be square|square matrix/i.test(message)) {
+          return 'Cette opération nécessite une matrice carrée.';
+        }
+        if (/inverse|determinant is zero|singular/i.test(message)) {
+          return "Cette matrice n'est pas inversible.";
+        }
+        if (/divide by zero|division by zero/i.test(message)) {
+          return 'Division par zéro impossible.';
+        }
+        if (/Cannot convert|Unit|unit/i.test(message)) {
+          return 'Les unités ne sont pas prises en charge.';
+        }
+        if (/RangeError|too large|Maximum call stack|out of range/i.test(message)) {
+          return 'Calcul trop volumineux.';
+        }
+        return 'Calcul impossible. Vérifie l’expression.';
+      }
+
+      function evaluateExpression(raw, options = {}) {
+        const normalized = normalizeExpression(raw);
+        const scope = makeScope(options.angle || state.angle);
+        let value;
+        try {
+          value = mj.evaluate(normalized, scope);
+        } catch (error) {
+          throw new CalcError(translateError(error));
+        }
+        if (value && value.isResultSet) {
+          const entries = value.entries || [];
+          value = entries.length ? entries[entries.length - 1] : undefined;
+        }
+        if (value === undefined || value === null) {
+          throw new CalcError('Expression vide ou invalide.');
+        }
+        return normalizeResult(value);
+      }
+
+      function normalizeResult(value) {
+        if (typeof value === 'number') return Object.is(value, -0) ? 0 : value;
+        if (value && value.isComplex) {
+          const scale = Math.max(1, Math.abs(value.re), Math.abs(value.im));
+          let re = value.re;
+          let im = value.im;
+          if (Math.abs(re) < 1e-12 * scale) re = 0;
+          if (Math.abs(im) < 1e-12 * scale) im = 0;
+          if (im === 0) return re;
+          return mj.complex(re, im);
+        }
+        if (value && value.isMatrix) return value.map((entry) => normalizeResult(entry));
+        if (Array.isArray(value)) return value.map((entry) => normalizeResult(entry));
+        return value;
+      }
+
+      function isFiniteComplex(value) {
+        return Number.isFinite(value.re) && Number.isFinite(value.im);
+      }
+
+      function isSupportedResult(value) {
+        if (typeof value === 'number') return Number.isFinite(value);
+        if (typeof value === 'boolean') return true;
+        if (value && value.isComplex) return isFiniteComplex(value);
+        if (value && value.isMatrix) return isSupportedResult(value.toArray());
+        if (Array.isArray(value)) return value.every((entry) => isSupportedResult(entry));
+        return false;
+      }
+
+      function assertSupportedResult(value) {
+        if (typeof value === 'number' && !Number.isFinite(value)) {
+          if (Number.isNaN(value)) throw new CalcError('Résultat indéfini.');
+          throw new CalcError('Résultat infini : division par zéro probable.');
+        }
+        if (value && value.isComplex && !isFiniteComplex(value)) {
+          throw new CalcError('Résultat complexe infini ou indéfini.');
+        }
+        if (!isSupportedResult(value)) {
+          throw new CalcError('Ce type de résultat n’est pas pris en charge.');
+        }
+      }
+
+      function getCurrentValue() {
+        if (state.preview !== null) return state.preview;
+        if (state.lastResult !== null) return state.lastResult;
+        return null;
+      }
+
+      /* ================= Display ================= */
+      function setResult(value, isPreview) {
+        const shown = value === null || value === undefined
+          ? (state.lastResult !== null ? state.lastResult : 0)
+          : value;
+        const isMatrix = !!(shown && shown.isMatrix) || Array.isArray(shown);
+        const isText = typeof shown === 'string';
+        const isComplex = !!(shown && shown.isComplex);
+        const plainLength = valueToText(shown).length;
+
+        els.result.classList.remove('is-error', 'is-preview', 'has-matrix', 'is-text', 'is-small');
+        if (isPreview) els.result.classList.add('is-preview');
+        if (isMatrix) els.result.classList.add('has-matrix', 'is-small');
+        if (isText) els.result.classList.add('is-text');
+        if (isComplex || plainLength > 20) els.result.classList.add('is-small');
+        els.result.innerHTML = renderValueHTML(shown);
+      }
+
+      function setError(message, soft = false) {
+        els.errorLine.textContent = message || '';
+        els.errorLine.classList.toggle('is-soft', !!soft);
+      }
+
+      function updateLastExpression() {
+        els.lastExpression.textContent = state.lastExpression || '';
+        els.lastExpression.title = state.lastExpression || '';
+      }
+
+      function updatePreview() {
+        updateLastExpression();
+        const raw = els.expression.value;
+        if (!raw.trim()) {
+          state.preview = null;
+          state.previewError = null;
+          setResult(state.lastResult, false);
+          setError('');
+          return;
+        }
+
+        try {
+          const value = evaluateExpression(raw);
+          state.preview = value;
+          state.previewError = null;
+          setResult(value, true);
+          if (typeof value === 'number' && !Number.isFinite(value)) {
+            setError('Résultat infini ou indéfini. Il ne sera pas ajouté à l’historique.', true);
+          } else {
+            setError('');
+          }
+        } catch (error) {
+          state.preview = null;
+          state.previewError = error;
+          setResult(state.lastResult, false);
+          if (isProbablyIncomplete(raw)) {
+            setError('', true);
+          } else {
+            setError(error.message, true);
+          }
+        }
+      }
+
+      function commit() {
+        const raw = els.expression.value;
+        if (!raw.trim()) {
+          if (state.lastResult !== null) showToast('Résultat précédent conservé.');
+          return;
+        }
+
+        let value;
+        try {
+          value = evaluateExpression(raw);
+          assertSupportedResult(value);
+        } catch (error) {
+          setError(error.message, false);
+          setResult(state.lastResult, false);
+          shakeDisplay();
+          return;
+        }
+
+        state.lastResult = value;
+        state.lastExpression = raw.trim();
+        state.ans = value;
+        state.preview = null;
+        state.previewError = null;
+        els.expression.value = '';
+        updateLastExpression();
+        setResult(value, false);
+        setError('');
+        addHistoryEntry({ source: 'expr', expression: state.lastExpression, result: value });
+        updateMemoryUI();
+        els.expression.focus();
+      }
+
+      function clearEntry() {
+        els.expression.value = '';
+        state.preview = null;
+        state.previewError = null;
+        setError('');
+        setResult(state.lastResult, false);
+        els.expression.focus();
+      }
+
+      function clearAll() {
+        els.expression.value = '';
+        state.preview = null;
+        state.previewError = null;
+        state.lastResult = null;
+        state.lastExpression = '';
+        state.ans = 0;
+        updateLastExpression();
+        setError('');
+        setResult(null, false);
+        els.expression.focus();
+      }
+
+      /* ================= Expression editing ================= */
+      function setCaret(position) {
+        const input = els.expression;
+        const safe = Math.max(0, Math.min(position, input.value.length));
+        input.setSelectionRange(safe, safe);
+      }
+
+      function insertText(text, options = {}) {
+        const input = els.expression;
+        const start = input.selectionStart == null ? input.value.length : input.selectionStart;
+        const end = input.selectionEnd == null ? start : input.selectionEnd;
+        const before = input.value.slice(0, start);
+        const after = input.value.slice(end);
+        input.value = before + text + after;
+        const caret = start + text.length - (options.caretBack || 0);
+        input.focus();
+        setCaret(caret);
+        updatePreview();
+      }
+
+      function insertFunction(name, displayName) {
+        const input = els.expression;
+        const start = input.selectionStart == null ? input.value.length : input.selectionStart;
+        const end = input.selectionEnd == null ? start : input.selectionEnd;
+        const selected = input.value.slice(start, end);
+        if (selected) {
+          insertText(`${name}(${selected})`);
+        } else {
+          insertText(`${name}()`, { caretBack: 1 });
+        }
+      }
+
+      function insertPower(power) {
+        const input = els.expression;
+        const start = input.selectionStart == null ? input.value.length : input.selectionStart;
+        const end = input.selectionEnd == null ? start : input.selectionEnd;
+        const selected = input.value.slice(start, end);
+        if (selected) {
+          insertText(`(${selected})^${power || ''}`);
+        } else if (!input.value.trim() && state.lastResult !== null) {
+          insertText(`ans^${power || ''}`);
+        } else {
+          insertText(`^${power || ''}`);
+        }
+      }
+
+      function insertReciprocal() {
+        const input = els.expression;
+        const start = input.selectionStart == null ? input.value.length : input.selectionStart;
+        const end = input.selectionEnd == null ? start : input.selectionEnd;
+        const selected = input.value.slice(start, end);
+        if (selected) insertText(`1/(${selected})`);
+        else insertText('1/()', { caretBack: 1 });
+      }
+
+      function insertParen(which) {
+        const input = els.expression;
+        const start = input.selectionStart == null ? input.value.length : input.selectionStart;
+        const end = input.selectionEnd == null ? start : input.selectionEnd;
+        if (which === '(') {
+          const selected = input.value.slice(start, end);
+          if (selected) insertText(`(${selected})`);
+          else insertText('()', { caretBack: 1 });
+          return;
+        }
+        if (start === end && input.value[start] === ')') {
+          input.focus();
+          setCaret(start + 1);
+          return;
+        }
+        insertText(')');
+      }
+
+      function insertComma() {
+        const input = els.expression;
+        const value = input.value;
+        if (!value.trim() || /[+\-*/^×÷−,(]\s*$/.test(value)) {
+          insertText('0,');
+        } else {
+          insertText(',');
+        }
+      }
+
+      function insertToken(token) {
+        const input = els.expression;
+        const value = input.value;
+
+        if (!value.trim() && state.lastResult !== null && /[+\-*/^×÷−%!]/.test(token)) {
+          const suffix = (token === '%' || token === '!') ? token : ` ${token} `;
+          input.value = 'ans' + suffix;
+          input.focus();
+          setCaret(input.value.length);
+          updatePreview();
+          return;
+        }
+
+        if (/^[+\-*/^×÷−]$/.test(token)) {
+          const trimmed = value.replace(/\s+$/, '');
+          if (/[+\-*/^×÷−]$/.test(trimmed)) {
+            input.value = trimmed.slice(0, -1) + token;
+            input.focus();
+            setCaret(input.value.length);
+            updatePreview();
+            return;
+          }
+        }
+
+        insertText(token);
+      }
+
+      function toggleSign() {
+        const input = els.expression;
+        const start = input.selectionStart == null ? input.value.length : input.selectionStart;
+        const end = input.selectionEnd == null ? start : input.selectionEnd;
+
+        if (start !== end) {
+          const selected = input.value.slice(start, end);
+          insertText(`-(${selected})`);
+          return;
+        }
+
+        const whole = input.value.trim();
+        if (/^-?\d+(?:[.,]\d+)?$/.test(whole)) {
+          input.value = whole.startsWith('-') ? whole.slice(1) : '-' + whole;
+          input.focus();
+          setCaret(input.value.length);
+          updatePreview();
+          return;
+        }
+
+        insertText('-');
+      }
+
+      function backspace() {
+        const input = els.expression;
+        const start = input.selectionStart == null ? input.value.length : input.selectionStart;
+        const end = input.selectionEnd == null ? start : input.selectionEnd;
+        if (start !== end) {
+          input.value = input.value.slice(0, start) + input.value.slice(end);
+          input.focus();
+          setCaret(start);
+          updatePreview();
+          return;
+        }
+        if (start === 0) return;
+        if (input.value[start - 1] === '(' && input.value[start] === ')') {
+          input.value = input.value.slice(0, start - 1) + input.value.slice(start + 1);
+          input.focus();
+          setCaret(start - 1);
+        } else {
+          input.value = input.value.slice(0, start - 1) + input.value.slice(start);
+          input.focus();
+          setCaret(start - 1);
+        }
+        updatePreview();
+      }
+
+      /* ================= Keypad ================= */
+      const KEYPAD_KEYS = [
+        { label: 'sin', aria: 'Sinus', kind: 'fn', name: 'sin' },
+        { label: 'cos', aria: 'Cosinus', kind: 'fn', name: 'cos' },
+        { label: 'tan', aria: 'Tangente', kind: 'fn', name: 'tan' },
+        { label: 'ln', aria: 'Logarithme népérien', kind: 'fn', name: 'ln' },
+        { label: 'log', aria: 'Logarithme base 10', kind: 'fn', name: 'log' },
+        { label: '√', aria: 'Racine carrée', kind: 'fn', name: 'sqrt', display: '√' },
+
+        { label: 'sin⁻¹', aria: 'Arc sinus', kind: 'fn', name: 'asin' },
+        { label: 'cos⁻¹', aria: 'Arc cosinus', kind: 'fn', name: 'acos' },
+        { label: 'tan⁻¹', aria: 'Arc tangente', kind: 'fn', name: 'atan' },
+        { label: 'eˣ', aria: 'Exponentielle', kind: 'fn', name: 'e^' },
+        { label: '10ˣ', aria: 'Puissance de dix', kind: 'fn', name: '10^' },
+        { label: 'x²', aria: 'X au carré', kind: 'power', power: '2' },
+
+        { label: 'sinh', aria: 'Sinus hyperbolique', kind: 'fn', name: 'sinh' },
+        { label: 'cosh', aria: 'Cosinus hyperbolique', kind: 'fn', name: 'cosh' },
+        { label: 'tanh', aria: 'Tangente hyperbolique', kind: 'fn', name: 'tanh' },
+        { label: 'asinh', aria: 'Argument sinus hyperbolique', kind: 'fn', name: 'asinh' },
+        { label: 'acosh', aria: 'Argument cosinus hyperbolique', kind: 'fn', name: 'acosh' },
+        { label: 'atanh', aria: 'Argument tangente hyperbolique', kind: 'fn', name: 'atanh' },
+
+        { label: '∛', aria: 'Racine cubique', kind: 'fn', name: 'cbrt', display: '∛' },
+        { label: 'n!', aria: 'Factorielle', kind: 'factorial' },
+        { label: 'nCr', aria: 'Combinaisons', kind: 'fn', name: 'combinations' },
+        { label: 'nPr', aria: 'Arrangements', kind: 'fn', name: 'permutations' },
+        { label: 'abs', aria: 'Valeur absolue', kind: 'fn', name: 'abs' },
+        { label: 'xʸ', aria: 'Puissance', kind: 'power' },
+
+        { label: 'π', aria: 'Pi', kind: 'const', insert: 'π' },
+        { label: 'e', aria: 'Constante d’Euler', kind: 'const', insert: 'e' },
+        { label: 'i', aria: 'Unité imaginaire', kind: 'const', insert: 'i' },
+        { label: '(', aria: 'Parenthèse ouvrante', kind: 'paren', which: '(' },
+        { label: ')', aria: 'Parenthèse fermante', kind: 'paren', which: ')' },
+        { label: '%', aria: 'Pourcentage', kind: 'const', insert: '%' },
+
+        { label: '7', aria: '7', kind: 'num', insert: '7' },
+        { label: '8', aria: '8', kind: 'num', insert: '8' },
+        { label: '9', aria: '9', kind: 'num', insert: '9' },
+        { label: '÷', aria: 'Diviser', kind: 'op', insert: '÷' },
+        { label: '⌫', aria: 'Effacer le dernier caractère', kind: 'backspace', danger: true },
+        { label: 'C', aria: 'Effacer la saisie', kind: 'clear-entry' },
+
+        { label: '4', aria: '4', kind: 'num', insert: '4' },
+        { label: '5', aria: '5', kind: 'num', insert: '5' },
+        { label: '6', aria: '6', kind: 'num', insert: '6' },
+        { label: '×', aria: 'Multiplier', kind: 'op', insert: '×' },
+        { label: '1/x', aria: 'Inverse', kind: 'reciprocal' },
+        { label: 'AC', aria: 'Tout effacer', kind: 'clear-all', danger: true },
+
+        { label: '1', aria: '1', kind: 'num', insert: '1' },
+        { label: '2', aria: '2', kind: 'num', insert: '2' },
+        { label: '3', aria: '3', kind: 'num', insert: '3' },
+        { label: '−', aria: 'Soustraire', kind: 'op', insert: '−' },
+        { label: 'ans', aria: 'Résultat précédent', kind: 'const', insert: 'ans' },
+        { label: '±', aria: 'Changer le signe', kind: 'sign' },
+
+        { label: '0', aria: '0', kind: 'num', insert: '0' },
+        { label: ',', aria: 'Virgule décimale', kind: 'comma' },
+        { label: '+', aria: 'Additionner', kind: 'op', insert: '+' },
+        { label: '=', aria: 'Calculer', kind: 'equals' }
+      ];
+
+      function renderKeypad() {
+        els.keypad.innerHTML = '';
+        for (const key of KEYPAD_KEYS) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'key';
+          if (key.kind === 'num') button.classList.add('key-num');
+          if (key.kind === 'op') button.classList.add('key-op');
+          if (key.kind === 'fn' || key.kind === 'power' || key.kind === 'factorial' || key.kind === 'reciprocal') {
+            button.classList.add('key-fn');
+          }
+          if (['backspace', 'clear-entry', 'clear-all', 'sign', 'paren', 'comma'].includes(key.kind)) {
+            button.classList.add('key-action');
+          }
+          if (key.danger) button.classList.add('key-danger');
+          if (key.kind === 'equals') button.classList.add('key-equals');
+          button.textContent = key.label;
+          button.setAttribute('aria-label', key.aria);
+          button.addEventListener('click', () => handleKey(key));
+          els.keypad.appendChild(button);
+        }
+      }
+
+      function handleKey(key) {
+        switch (key.kind) {
+          case 'num':
+          case 'op':
+          case 'const':
+            insertToken(key.insert);
+            break;
+          case 'fn':
+            insertFunction(key.name, key.display);
+            break;
+          case 'power':
+            insertPower(key.power);
+            break;
+          case 'factorial':
+            insertToken('!');
+            break;
+          case 'paren':
+            insertParen(key.which);
+            break;
+          case 'comma':
+            insertComma();
+            break;
+          case 'reciprocal':
+            insertReciprocal();
+            break;
+          case 'sign':
+            toggleSign();
+            break;
+          case 'backspace':
+            backspace();
+            break;
+          case 'clear-entry':
+            clearEntry();
+            break;
+          case 'clear-all':
+            clearAll();
+            break;
+          case 'equals':
+            commit();
+            break;
+          default:
+            break;
+        }
+      }
+
+      /* ================= Angle & memory ================= */
+      function updateAngleUI() {
+        els.angleToggle.textContent = state.angle;
+        els.angleToggle.dataset.angle = state.angle;
+        els.angleToggle.setAttribute('aria-label', `Mode angulaire : ${state.angle === 'DEG' ? 'degrés' : 'radians'}. Cliquer pour changer.`);
+        els.angleBadge.textContent = state.angle;
+      }
+
+      function setAngle(mode) {
+        state.angle = mode === 'RAD' ? 'RAD' : 'DEG';
+        updateAngleUI();
+        saveSettings();
+        updatePreview();
+        showToast(`Mode ${state.angle === 'DEG' ? 'degrés' : 'radians'}.`);
+      }
+
+      function updateMemoryUI() {
+        const hasMemory = state.memory !== 0;
+        els.memoryBadge.hidden = !hasMemory;
+        els.memoryValue.hidden = !hasMemory;
+        if (hasMemory) {
+          const text = `M = ${formatNumber(state.memory)}`;
+          els.memoryValue.textContent = text;
+          els.memoryValue.title = text;
+        } else {
+          els.memoryValue.textContent = '';
+          els.memoryValue.title = '';
+        }
+        els.memoryBadge.title = hasMemory ? `Mémoire : ${formatNumber(state.memory)}` : 'Mémoire vide';
+      }
+
+      function memoryAdd(sign) {
+        const value = getCurrentValue();
+        if (value === null) {
+          showToast('Aucun résultat à mémoriser.', 'error');
+          return;
+        }
+        if (typeof value !== 'number' || !Number.isFinite(value)) {
+          showToast('La mémoire accepte uniquement les nombres réels.', 'error');
+          return;
+        }
+        state.memory += sign * value;
+        if (Object.is(state.memory, -0)) state.memory = 0;
+        updateMemoryUI();
+        saveSettings();
+        showToast(`${sign > 0 ? 'Ajouté à' : 'Soustrait de'} la mémoire : ${formatNumber(value)}.`, 'success');
+      }
+
+      function memoryRecall() {
+        if (state.memory === 0) {
+          insertText('0');
+          return;
+        }
+        insertText(String(state.memory).replace('.', ','));
+      }
+
+      function memoryClear() {
+        state.memory = 0;
+        updateMemoryUI();
+        saveSettings();
+        showToast('Mémoire effacée.', 'success');
+      }
+
+      /* ================= Tabs ================= */
+      function setActiveTab(tab) {
+        if (!['calc', 'matrix', 'complex'].includes(tab)) tab = 'calc';
+        state.activeTab = tab;
+        for (const button of els.tabs) {
+          const isActive = button.id === `tab-${tab}`;
+          button.setAttribute('aria-selected', String(isActive));
+          button.tabIndex = isActive ? 0 : -1;
+        }
+        for (const name of Object.keys(els.panels)) {
+          els.panels[name].hidden = name !== tab;
+        }
+        saveSettings();
+      }
+
+      function initTabs() {
+        els.tabs.forEach((button, index) => {
+          button.addEventListener('click', () => setActiveTab(button.id.replace('tab-', '')));
+          button.addEventListener('keydown', (event) => {
+            const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
+            if (!keys.includes(event.key)) return;
+            event.preventDefault();
+            let next = index;
+            if (event.key === 'ArrowLeft') next = (index - 1 + els.tabs.length) % els.tabs.length;
+            if (event.key === 'ArrowRight') next = (index + 1) % els.tabs.length;
+            if (event.key === 'Home') next = 0;
+            if (event.key === 'End') next = els.tabs.length - 1;
+            els.tabs[next].focus();
+            setActiveTab(els.tabs[next].id.replace('tab-', ''));
+          });
+        });
+        setActiveTab(state.activeTab);
+      }
+
+      /* ================= History ================= */
+      function makeId() {
+        return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      }
+
+      function addHistoryEntry({ source, expression, result, matrixState }) {
+        const entry = {
+          id: makeId(),
+          source: source || 'expr',
+          expression: String(expression || '').trim(),
+          result: serializeValue(result),
+          resultText: valueToText(result),
+          timestamp: Date.now(),
+          matrixState: matrixState ? JSON.parse(JSON.stringify(matrixState)) : null
+        };
+        state.history.unshift(entry);
+        state.history = state.history.slice(0, MAX_HISTORY);
+        saveHistory();
+        renderHistory();
+      }
+
+      function formatHistoryTime(timestamp) {
+        try {
+          return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date(timestamp));
+        } catch (error) {
+          return '';
+        }
+      }
+
+      function renderHistory() {
+        els.historyList.innerHTML = '';
+        const hasEntries = state.history.length > 0;
+        els.historyEmpty.style.display = hasEntries ? 'none' : 'flex';
+        els.historyList.style.display = hasEntries ? 'flex' : 'none';
+
+        for (const entry of state.history) {
+          const item = document.createElement('li');
+          item.className = 'history-item';
+
+          const main = document.createElement('button');
+          main.type = 'button';
+          main.className = 'history-main';
+          main.setAttribute('aria-label', `Réutiliser le calcul ${entry.expression}`);
+
+          const expression = document.createElement('span');
+          expression.className = 'history-expr';
+          expression.textContent = entry.expression;
+          expression.title = entry.expression;
+
+          const result = document.createElement('span');
+          result.className = 'history-result';
+          try {
+            const value = deserializeValue(entry.result);
+            result.innerHTML = renderValueHTML(value);
+          } catch (error) {
+            result.textContent = entry.resultText;
+          }
+          if (entry.source === 'matrix') result.classList.add('has-matrix');
+
+          const time = document.createElement('span');
+          time.className = 'history-time';
+          time.textContent = formatHistoryTime(entry.timestamp);
+
+          main.append(expression, result, time);
+          main.addEventListener('click', () => reuseHistoryEntry(entry));
+
+          const actions = document.createElement('div');
+          actions.className = 'history-actions';
+
+          const copyButton = document.createElement('button');
+          copyButton.type = 'button';
+          copyButton.className = 'history-action';
+          copyButton.setAttribute('aria-label', 'Copier ce résultat');
+          copyButton.title = 'Copier';
+          copyButton.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"></path></svg>';
+          copyButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            copyText(entry.resultText);
+          });
+
+          const deleteButton = document.createElement('button');
+          deleteButton.type = 'button';
+          deleteButton.className = 'history-action';
+          deleteButton.setAttribute('aria-label', 'Supprimer ce calcul');
+          deleteButton.title = 'Supprimer';
+          deleteButton.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5M14 11v5"></path></svg>';
+          deleteButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            state.history = state.history.filter((itemEntry) => itemEntry.id !== entry.id);
+            saveHistory();
+            renderHistory();
+          });
+
+          actions.append(copyButton, deleteButton);
+          item.append(main, actions);
+          els.historyList.appendChild(item);
+        }
+      }
+
+      function reuseHistoryEntry(entry) {
+        closeHistory();
+        if (entry.source === 'matrix' && entry.matrixState) {
+          setActiveTab('matrix');
+          restoreMatrixState(entry.matrixState);
+          if (entry.result) {
+            try {
+              state.matrix.result = deserializeValue(entry.result);
+              state.matrix.error = '';
+              state.matrix.label = entry.expression;
+              renderMatrixResult();
+            } catch (error) {
+              state.matrix.result = null;
+              state.matrix.error = 'Impossible de restaurer ce résultat matriciel.';
+              renderMatrixResult();
+            }
+          }
+          showToast('Matrices restaurées.');
+          return;
+        }
+        setActiveTab('calc');
+        els.expression.value = entry.expression;
+        els.expression.focus();
+        setCaret(els.expression.value.length);
+        updatePreview();
+      }
+
+      function openHistory() {
+        els.historyPanel.classList.add('is-open');
+        els.historyBackdrop.classList.add('is-open');
+        document.body.classList.add('history-open');
+        els.historyToggle.setAttribute('aria-expanded', 'true');
+        els.closeHistory.focus();
+      }
+
+      function closeHistory() {
+        els.historyPanel.classList.remove('is-open');
+        els.historyBackdrop.classList.remove('is-open');
+        document.body.classList.remove('history-open');
+        els.historyToggle.setAttribute('aria-expanded', 'false');
+      }
+
+      async function clearAllHistory() {
+        if (!state.history.length) {
+          showToast('L’historique est déjà vide.');
+          return;
+        }
+        const confirmed = await confirmAction('Effacer tout l’historique ? Cette action est irréversible.', 'Tout effacer');
+        if (!confirmed) return;
+        state.history = [];
+        saveHistory();
+        renderHistory();
+        showToast('Historique effacé.', 'success');
+      }
+
+      function initHistory() {
+        renderHistory();
+        els.clearHistory.addEventListener('click', clearAllHistory);
+        els.historyToggle.addEventListener('click', openHistory);
+        els.closeHistory.addEventListener('click', closeHistory);
+        els.historyBackdrop.addEventListener('click', closeHistory);
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && els.historyPanel.classList.contains('is-open')) closeHistory();
+        });
+      }
+
+      /* ================= Dialogs ================= */
+      function openHelp() {
+        const previous = document.activeElement;
+        if (els.helpDialog.open) return;
+        els.helpDialog.showModal();
+        els.helpClose.focus();
+        els.helpDialog.addEventListener('close', () => {
+          if (previous && typeof previous.focus === 'function') previous.focus();
+        }, { once: true });
+      }
+
+      function confirmAction(message, confirmLabel = 'Confirmer') {
+        if (els.confirmDialog.open) els.confirmDialog.close();
+        return new Promise((resolve) => {
+          els.confirmMessage.textContent = message;
+          els.confirmOk.textContent = confirmLabel;
+          const finish = (result) => {
+            if (els.confirmDialog.open) els.confirmDialog.close();
+            resolve(result);
+          };
+          els.confirmOk.onclick = () => finish(true);
+          els.confirmCancel.onclick = () => finish(false);
+          els.confirmDialog.oncancel = (event) => {
+            event.preventDefault();
+            finish(false);
+          };
+          els.confirmDialog.showModal();
+          els.confirmCancel.focus();
+        });
+      }
+
+      function initDialogs() {
+        els.helpBtn.addEventListener('click', openHelp);
+        els.helpClose.addEventListener('click', () => els.helpDialog.close());
+        els.helpDialog.addEventListener('click', (event) => {
+          if (event.target === els.helpDialog) els.helpDialog.close();
+        });
+        els.confirmDialog.addEventListener('click', (event) => {
+          if (event.target === els.confirmDialog) els.confirmCancel.click();
+        });
+        els.testClose.addEventListener('click', () => els.testDialog.close());
+        els.testDialog.addEventListener('click', (event) => {
+          if (event.target === els.testDialog) els.testDialog.close();
+        });
+      }
+
+      /* ================= Complex panel & chips ================= */
+      function setComplexMode(polar) {
+        state.complexMode = polar ? 'polar' : 'rect';
+        saveSettings();
+        updatePreview();
+        renderHistory();
+      }
+
+      function initComplexPanel() {
+        els.polarToggle.checked = state.complexMode === 'polar';
+        els.polarToggle.addEventListener('change', () => setComplexMode(els.polarToggle.checked));
+
+        document.querySelectorAll('[data-example]').forEach((button) => {
+          button.addEventListener('click', () => {
+            setActiveTab('calc');
+            els.expression.value = button.dataset.example;
+            els.expression.focus();
+            setCaret(els.expression.value.length);
+            updatePreview();
+          });
+        });
+      }
+
+      function handleChip(chip) {
+        const map = {
+          floor: 'floor',
+          ceil: 'ceil',
+          round: 'round',
+          re: 're',
+          im: 'im',
+          arg: 'arg',
+          conj: 'conj',
+          log2: 'log2'
+        };
+        if (chip === 'semicolon') {
+          insertText('; ');
+          return;
+        }
+        if (chip === 'random') {
+          insertText('random()');
+          return;
+        }
+        if (map[chip]) insertFunction(map[chip]);
+      }
+
+      function initChips() {
+        els.chips.addEventListener('click', (event) => {
+          const button = event.target.closest('[data-chip]');
+          if (button) handleChip(button.dataset.chip);
+        });
+        els.chips.addEventListener('mousedown', (event) => {
+          if (event.target.closest('button')) event.preventDefault();
+        });
+      }
+
+      /* ================= Matrix panel ================= */
+      const MATRIX_OPS = [
+        { id: 'add', label: 'A + B', binary: true },
+        { id: 'sub', label: 'A − B', binary: true },
+        { id: 'mul', label: 'A × B', binary: true },
+        { id: 'det', label: 'det(A)', binary: false },
+        { id: 'inv', label: 'inv(A)', binary: false },
+        { id: 'transpose', label: 'transpose(A)', binary: false },
+        { id: 'trace', label: 'trace(A)', binary: false },
+        { id: 'scalar', label: 'k × A', binary: false, scalar: true }
+      ];
+
+      function matrixStateSnapshot() {
+        return {
+          rowsA: state.matrix.rowsA,
+          colsA: state.matrix.colsA,
+          rowsB: state.matrix.rowsB,
+          colsB: state.matrix.colsB,
+          a: state.matrix.a.map((row) => row.slice()),
+          b: state.matrix.b.map((row) => row.slice()),
+          op: state.matrix.op,
+          scalar: state.matrix.scalar
+        };
+      }
+
+      function resizeMatrixRows(which, rows, cols) {
+        const old = which === 'a' ? state.matrix.a : state.matrix.b;
+        const next = Array.from({ length: rows }, (_, r) =>
+          Array.from({ length: cols }, (_, c) => (old[r] && old[r][c] != null ? old[r][c] : '0'))
+        );
+        if (which === 'a') {
+          state.matrix.rowsA = rows;
+          state.matrix.colsA = cols;
+          state.matrix.a = next;
+        } else {
+          state.matrix.rowsB = rows;
+          state.matrix.colsB = cols;
+          state.matrix.b = next;
+        }
+      }
+
+      function renderMatrixEditor(which) {
+        const isA = which === 'a';
+        const rows = isA ? state.matrix.rowsA : state.matrix.rowsB;
+        const cols = isA ? state.matrix.colsA : state.matrix.colsB;
+        const values = isA ? state.matrix.a : state.matrix.b;
+        const container = isA ? els.gridA : els.gridB;
+        container.innerHTML = '';
+        container.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+
+        for (let r = 0; r < rows; r += 1) {
+          for (let c = 0; c < cols; c += 1) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.inputMode = 'decimal';
+            input.autocomplete = 'off';
+            input.spellcheck = false;
+            input.value = values[r] && values[r][c] != null ? values[r][c] : '0';
+            input.setAttribute('aria-label', `Matrice ${isA ? 'A' : 'B'}, ligne ${r + 1}, colonne ${c + 1}`);
+            input.addEventListener('focus', () => input.select());
+            input.addEventListener('input', () => {
+              if (isA) state.matrix.a[r][c] = input.value;
+              else state.matrix.b[r][c] = input.value;
+              clearMatrixResult();
+            });
+            container.appendChild(input);
+          }
+        }
+      }
+
+      function fillMatrix(which, mode) {
+        const isA = which === 'a';
+        const rows = isA ? state.matrix.rowsA : state.matrix.rowsB;
+        const cols = isA ? state.matrix.colsA : state.matrix.colsB;
+        const values = Array.from({ length: rows }, (_, r) =>
+          Array.from({ length: cols }, (__, c) => {
+            if (mode === 'identity') return r === c ? '1' : '0';
+            return '0';
+          })
+        );
+        if (isA) state.matrix.a = values;
+        else state.matrix.b = values;
+        renderMatrixEditor(which);
+        clearMatrixResult();
+      }
+
+      function readMatrix(which) {
+        const isA = which === 'a';
+        const rows = isA ? state.matrix.rowsA : state.matrix.rowsB;
+        const cols = isA ? state.matrix.colsA : state.matrix.colsB;
+        const values = isA ? state.matrix.a : state.matrix.b;
+        const name = isA ? 'A' : 'B';
+        const result = [];
+        for (let r = 0; r < rows; r += 1) {
+          const row = [];
+          for (let c = 0; c < cols; c += 1) {
+            const raw = String(values[r] && values[r][c] != null ? values[r][c] : '').trim().replace(',', '.');
+            if (!raw) throw new CalcError(`Remplis toutes les cases de la matrice ${name} (ligne ${r + 1}, colonne ${c + 1}).`);
+            const number = Number(raw);
+            if (!Number.isFinite(number)) {
+              throw new CalcError(`Valeur invalide dans la matrice ${name} (ligne ${r + 1}, colonne ${c + 1}).`);
+            }
+            row.push(number);
+          }
+          result.push(row);
+        }
+        return result;
+      }
+
+      function readScalar() {
+        const raw = String(state.matrix.scalar || '').trim().replace(',', '.');
+        const number = Number(raw);
+        if (!raw || !Number.isFinite(number)) throw new CalcError('Le scalaire k doit être un nombre valide.');
+        return number;
+      }
+
+      function clearMatrixResult() {
+        state.matrix.result = null;
+        state.matrix.error = '';
+        state.matrix.label = '';
+        renderMatrixResult();
+      }
+
+      function updateMatrixOpUI() {
+        const op = MATRIX_OPS.find((entry) => entry.id === state.matrix.op) || MATRIX_OPS[0];
+        els.scalarWrap.hidden = !op.scalar;
+        els.cardB.classList.toggle('is-disabled', !op.binary);
+        [els.rowsB, els.colsB, els.identityB, els.clearB].forEach((control) => {
+          control.disabled = !op.binary;
+        });
+      }
+
+      function computeMatrix() {
+        state.matrix.error = '';
+        try {
+          const op = MATRIX_OPS.find((entry) => entry.id === state.matrix.op) || MATRIX_OPS[0];
+          const a = readMatrix('a');
+          const rowsA = state.matrix.rowsA;
+          const colsA = state.matrix.colsA;
+          let result;
+
+          if (op.id === 'add' || op.id === 'sub') {
+            if (rowsA !== state.matrix.rowsB || colsA !== state.matrix.colsB) {
+              throw new CalcError('A et B doivent avoir les mêmes dimensions pour une addition ou une soustraction.');
+            }
+            const b = readMatrix('b');
+            result = op.id === 'add' ? mj.add(a, b) : mj.subtract(a, b);
+          } else if (op.id === 'mul') {
+            if (colsA !== state.matrix.rowsB) {
+              throw new CalcError('Le nombre de colonnes de A doit être égal au nombre de lignes de B.');
+            }
+            const b = readMatrix('b');
+            result = mj.multiply(a, b);
+          } else if (op.id === 'det') {
+            if (rowsA !== colsA) throw new CalcError('Le déterminant nécessite une matrice carrée.');
+            result = mj.det(a);
+          } else if (op.id === 'inv') {
+            if (rowsA !== colsA) throw new CalcError("L'inverse nécessite une matrice carrée.");
+            result = mj.inv(a);
+          } else if (op.id === 'transpose') {
+            result = mj.transpose(a);
+          } else if (op.id === 'trace') {
+            if (rowsA !== colsA) throw new CalcError('La trace nécessite une matrice carrée.');
+            result = mj.trace(a);
+          } else if (op.id === 'scalar') {
+            result = mj.multiply(readScalar(), a);
+          } else {
+            throw new CalcError('Opération matricielle inconnue.');
+          }
+
+          result = normalizeResult(result);
+          if (!isSupportedResult(result)) throw new CalcError('Le résultat matriciel contient une valeur invalide.');
+          state.matrix.result = result;
+          state.matrix.label = op.label;
+          renderMatrixResult();
+          addHistoryEntry({
+            source: 'matrix',
+            expression: op.label,
+            result,
+            matrixState: matrixStateSnapshot()
+          });
+          showToast('Résultat matriciel ajouté à l’historique.', 'success');
+        } catch (error) {
+          state.matrix.result = null;
+          state.matrix.error = error instanceof CalcError ? error.message : translateError(error);
+          renderMatrixResult();
+          showToast(state.matrix.error, 'error');
+        }
+      }
+
+      function renderMatrixResult() {
+        const container = els.matrixResult;
+        container.innerHTML = '';
+
+        if (state.matrix.error) {
+          const error = document.createElement('div');
+          error.className = 'matrix-error';
+          error.textContent = state.matrix.error;
+          container.appendChild(error);
+          return;
+        }
+
+        if (state.matrix.result === null) {
+          const placeholder = document.createElement('div');
+          placeholder.className = 'placeholder';
+          placeholder.textContent = 'Le résultat apparaîtra ici.';
+          container.appendChild(placeholder);
+          return;
+        }
+
+        const valueBox = document.createElement('div');
+        valueBox.className = 'matrix-result-large';
+        valueBox.innerHTML = renderValueHTML(state.matrix.result);
+        container.appendChild(valueBox);
+
+        const actions = document.createElement('div');
+        actions.className = 'matrix-result-actions';
+
+        const copyButton = document.createElement('button');
+        copyButton.type = 'button';
+        copyButton.className = 'btn';
+        copyButton.textContent = 'Copier';
+        copyButton.addEventListener('click', () => copyText(valueToText(state.matrix.result)));
+
+        const ansButton = document.createElement('button');
+        ansButton.type = 'button';
+        ansButton.className = 'btn btn-primary';
+        ansButton.textContent = 'Définir ans';
+        ansButton.addEventListener('click', () => {
+          state.ans = state.matrix.result;
+          state.lastResult = state.matrix.result;
+          state.lastExpression = state.matrix.label || 'Résultat matriciel';
+          updateLastExpression();
+          setResult(state.matrix.result, false);
+          setActiveTab('calc');
+          showToast('Résultat placé dans ans.', 'success');
+        });
+
+        actions.append(copyButton, ansButton);
+        container.appendChild(actions);
+      }
+
+      function restoreMatrixState(snapshot) {
+        if (!snapshot) return;
+        const dims = [snapshot.rowsA, snapshot.colsA, snapshot.rowsB, snapshot.colsB];
+        if (!dims.every((value) => [2, 3, 4].includes(value))) return;
+        if (!Array.isArray(snapshot.a) || !Array.isArray(snapshot.b)) return;
+        state.matrix.rowsA = snapshot.rowsA;
+        state.matrix.colsA = snapshot.colsA;
+        state.matrix.rowsB = snapshot.rowsB;
+        state.matrix.colsB = snapshot.colsB;
+        state.matrix.a = snapshot.a.map((row) => row.slice());
+        state.matrix.b = snapshot.b.map((row) => row.slice());
+        state.matrix.op = snapshot.op || 'add';
+        state.matrix.scalar = snapshot.scalar || '2';
+        els.rowsA.value = String(state.matrix.rowsA);
+        els.colsA.value = String(state.matrix.colsA);
+        els.rowsB.value = String(state.matrix.rowsB);
+        els.colsB.value = String(state.matrix.colsB);
+        els.matrixOp.value = state.matrix.op;
+        els.scalarK.value = state.matrix.scalar;
+        renderMatrixEditor('a');
+        renderMatrixEditor('b');
+        updateMatrixOpUI();
+        state.matrix.result = null;
+        state.matrix.error = '';
+        renderMatrixResult();
+      }
+
+      function initMatrixPanel() {
+        for (const select of [els.rowsA, els.colsA, els.rowsB, els.colsB]) {
+          select.innerHTML = '';
+          for (const size of [2, 3, 4]) {
+            const option = document.createElement('option');
+            option.value = String(size);
+            option.textContent = String(size);
+            select.appendChild(option);
+          }
+        }
+        els.matrixOp.innerHTML = '';
+        for (const op of MATRIX_OPS) {
+          const option = document.createElement('option');
+          option.value = op.id;
+          option.textContent = op.label;
+          els.matrixOp.appendChild(option);
+        }
+
+        els.rowsA.value = String(state.matrix.rowsA);
+        els.colsA.value = String(state.matrix.colsA);
+        els.rowsB.value = String(state.matrix.rowsB);
+        els.colsB.value = String(state.matrix.colsB);
+        els.matrixOp.value = state.matrix.op;
+        els.scalarK.value = state.matrix.scalar;
+
+        renderMatrixEditor('a');
+        renderMatrixEditor('b');
+        updateMatrixOpUI();
+        renderMatrixResult();
+
+        els.rowsA.addEventListener('change', () => {
+          resizeMatrixRows('a', Number(els.rowsA.value), Number(els.colsA.value));
+          renderMatrixEditor('a');
+          clearMatrixResult();
+        });
+        els.colsA.addEventListener('change', () => {
+          resizeMatrixRows('a', Number(els.rowsA.value), Number(els.colsA.value));
+          renderMatrixEditor('a');
+          clearMatrixResult();
+        });
+        els.rowsB.addEventListener('change', () => {
+          resizeMatrixRows('b', Number(els.rowsB.value), Number(els.colsB.value));
+          renderMatrixEditor('b');
+          clearMatrixResult();
+        });
+        els.colsB.addEventListener('change', () => {
+          resizeMatrixRows('b', Number(els.rowsB.value), Number(els.colsB.value));
+          renderMatrixEditor('b');
+          clearMatrixResult();
+        });
+        els.identityA.addEventListener('click', () => fillMatrix('a', 'identity'));
+        els.clearA.addEventListener('click', () => fillMatrix('a', 'zero'));
+        els.identityB.addEventListener('click', () => fillMatrix('b', 'identity'));
+        els.clearB.addEventListener('click', () => fillMatrix('b', 'zero'));
+        els.matrixOp.addEventListener('change', () => {
+          state.matrix.op = els.matrixOp.value;
+          updateMatrixOpUI();
+          clearMatrixResult();
+        });
+        els.scalarK.addEventListener('input', () => {
+          state.matrix.scalar = els.scalarK.value;
+          clearMatrixResult();
+        });
+        els.computeMatrix.addEventListener('click', computeMatrix);
+      }
+
+      /* ================= Self tests ================= */
+      function runSelfTests() {
+        const results = [];
+        const test = (name, fn) => {
+          try {
+            fn();
+            results.push({ name, pass: true });
+          } catch (error) {
+            results.push({ name, pass: false, detail: error && error.message ? error.message : String(error) });
+          }
+        };
+        const assert = (condition, message) => {
+          if (!condition) throw new Error(message || 'Assertion échouée');
+        };
+        const approx = (actual, expected, tolerance = 1e-9, label = '') => {
+          if (typeof actual !== 'number' || !Number.isFinite(actual) || Math.abs(actual - expected) > tolerance) {
+            throw new Error(`${label || 'Valeur'} : attendu ${expected}, obtenu ${actual}`);
+          }
+        };
+        const evalAt = (expression, angle = 'DEG') => {
+          const saved = state.angle;
+          state.angle = angle;
+          try {
+            return evaluateExpression(expression);
+          } finally {
+            state.angle = saved;
+          }
+        };
+        const expectThrow = (fn, pattern) => {
+          try {
+            fn();
+          } catch (error) {
+            if (pattern && !pattern.test(error.message)) {
+              throw new Error(`Message inattendu : ${error.message}`);
+            }
+            return;
+          }
+          throw new Error('Une erreur était attendue.');
+        };
+        const asArray = (value) => (value && typeof value.toArray === 'function' ? value.toArray() : value);
+
+        test('Priorité : 2+3×4', () => assert(evalAt('2+3*4') === 14));
+        test('Parenthèses : (2+3)×4', () => assert(evalAt('(2+3)*4') === 20));
+        test('Puissances associatives : 2^3^2', () => assert(evalAt('2^3^2') === 512));
+        test('Virgule décimale : 1,5+2,5', () => assert(evalAt('1,5+2,5') === 4));
+        test('Séparateur d’arguments : max(2;5)', () => assert(evalAt('max(2;5)') === 5));
+        test('Logarithme base 10 : log(1000)', () => assert(evalAt('log(1000)') === 3));
+        test('Logarithme base 2 : log(8;2)', () => assert(evalAt('log(8;2)') === 3));
+        test('Logarithme népérien : ln(e)', () => approx(evalAt('ln(e)'), 1));
+        test('Multiplication implicite : 3(4+5)', () => assert(evalAt('3(4+5)') === 27));
+        test('Multiplication implicite : (1+2)(3+4)', () => assert(evalAt('(1+2)(3+4)') === 21));
+        test('Multiplication implicite : 2π', () => approx(evalAt('2π'), 2 * Math.PI));
+        test('Pourcentage contextuel : 200+10%', () => approx(evalAt('200+10%'), 220));
+        test('Pourcentage contextuel : 200×10%', () => approx(evalAt('200*10%'), 20));
+        test('Pourcentage seul : 50%', () => approx(evalAt('50%'), 0.5));
+        test('Modulo : 8%3', () => assert(evalAt('8%3') === 2));
+        test('Trig DEG : sin(30)', () => approx(evalAt('sin(30)'), 0.5));
+        test('Trig DEG : cos(60)', () => approx(evalAt('cos(60)'), 0.5));
+        test('Trig DEG : tan(45)', () => approx(evalAt('tan(45)'), 1));
+        test('Trig DEG inverse : asin(0,5)', () => approx(evalAt('asin(0,5)'), 30));
+        test('Trig RAD : sin(pi/2)', () => approx(evalAt('sin(pi/2)', 'RAD'), 1));
+        test('Trig complexe reste en radians', () => {
+          const value = evalAt('sin(i)');
+          approx(value.re, 0, 1e-12, 'Partie réelle');
+          approx(value.im, 1.1752011936438014, 1e-9, 'Partie imaginaire');
+        });
+        test('Tan 90° indéfini', () => assert(evalAt('tan(90)') === Infinity));
+        test('Hyperbolique : sinh(0)', () => assert(evalAt('sinh(0)') === 0));
+        test('Hyperbolique : cosh(0)', () => assert(evalAt('cosh(0)') === 1));
+        test('Factorielle : 5!', () => assert(evalAt('5!') === 120));
+        test('Factorielle : 0!', () => assert(evalAt('0!') === 1));
+        test('Combinaisons : combinations(5;2)', () => assert(evalAt('combinations(5;2)') === 10));
+        test('Arrangements : permutations(5;2)', () => assert(evalAt('permutations(5;2)') === 20));
+        test('Racine carrée : sqrt(9)', () => assert(evalAt('sqrt(9)') === 3));
+        test('Racine cubique : cbrt(27)', () => assert(evalAt('cbrt(27)') === 3));
+        test('Complexe : i^2', () => assert(evalAt('i^2') === -1));
+        test('Complexe : (2+3i)(4−i)', () => {
+          const value = evalAt('(2+3i)*(4-i)');
+          approx(value.re, 11, 1e-9, 'Partie réelle');
+          approx(value.im, 10, 1e-9, 'Partie imaginaire');
+        });
+        test('Module complexe : abs(3+4i)', () => assert(evalAt('abs(3+4i)') === 5));
+        test('Partie réelle : re(2+3i)', () => assert(evalAt('re(2+3i)') === 2));
+        test('Partie imaginaire : im(2+3i)', () => assert(evalAt('im(2+3i)') === 3));
+        test('Argument DEG : arg(1+i)', () => approx(evalAt('arg(1+i)'), 45));
+        test('Conjugué : conj(2+3i)', () => {
+          const value = evalAt('conj(2+3i)');
+          approx(value.re, 2, 1e-9, 'Partie réelle');
+          approx(value.im, -3, 1e-9, 'Partie imaginaire');
+        });
+        test('Racine de négatif : sqrt(−4)', () => {
+          const value = evalAt('sqrt(-4)');
+          approx(value.re, 0, 1e-9, 'Partie réelle');
+          approx(value.im, 2, 1e-9, 'Partie imaginaire');
+        });
+        test('Matrice : déterminant', () => approx(mj.det([[1, 2], [3, 4]]), -2));
+        test('Matrice : produit', () => {
+          const value = asArray(mj.multiply([[1, 2], [3, 4]], [[5, 6], [7, 8]]));
+          assert(value[0][0] === 19 && value[0][1] === 22 && value[1][0] === 43 && value[1][1] === 50);
+        });
+        test('Matrice : transposée', () => {
+          const value = asArray(mj.transpose([[1, 2], [3, 4]]));
+          assert(value[0][0] === 1 && value[0][1] === 3 && value[1][0] === 2 && value[1][1] === 4);
+        });
+        test('Matrice : trace', () => assert(mj.trace([[1, 2], [3, 4]]) === 5));
+        test('Matrice : inverse', () => {
+          const value = asArray(mj.inv([[4, 7], [2, 6]]));
+          approx(value[0][0], 0.6, 1e-9, 'Cellule 1-1');
+          approx(value[0][1], -0.7, 1e-9, 'Cellule 1-2');
+          approx(value[1][0], -0.2, 1e-9, 'Cellule 2-1');
+          approx(value[1][1], 0.4, 1e-9, 'Cellule 2-2');
+        });
+        test('Matrice : inverse singulière', () => expectThrow(() => mj.inv([[1, 2], [2, 4]])));
+        test('Erreur : expression incomplète', () => expectThrow(() => evalAt('2+'), /incomplète|invalide/i));
+        test('Erreur : symbole inconnu', () => expectThrow(() => evalAt('foo(2)'), /Symbole inconnu/i));
+        test('Erreur : affectation refusée', () => expectThrow(() => evalAt('x=5'), /affectation/i));
+        test('Erreur : matrice textuelle refusée', () => expectThrow(() => evalAt('[[1,2],[3,4]]'), /Matrices/i));
+        test('Erreur : résultat infini refusé', () => expectThrow(() => { assertSupportedResult(evalAt('1/0')); }, /infini/i));
+        test('Erreur : résultat indéfini refusé', () => expectThrow(() => { assertSupportedResult(evalAt('0/0')); }, /indéfini/i));
+        test('Format : 0,1+0,2', () => assert(formatNumber(0.1 + 0.2) === '0,3'));
+        test('Format : zéro négatif', () => assert(formatNumber(-0) === '0'));
+        test('Format : milliers', () => assert(normalizeSpaces(formatNumber(1234567.89)) === '1 234 567,89'));
+        test('Format : scientifique grand', () => assert(formatNumber(1e13).includes('10¹³')));
+        test('Format : scientifique petit', () => assert(formatNumber(1e-10).includes('10⁻¹⁰')));
+        test('Format : complexe', () => assert(formatComplex(mj.complex(2, 3)) === '2 + 3i'));
+        test('Format : complexe négatif', () => assert(formatComplex(mj.complex(2, -3)) === '2 − 3i'));
+        test('Format : imaginaire pur', () => assert(formatComplex(mj.complex(0, -1)) === '−i'));
+        test('Format : matrice texte', () => assert(matrixText([[1, 2], [3, 4]]) === '[[1, 2], [3, 4]]'));
+        test('Normalisation : milliers', () => assert(normalizeExpression('1 234,5') === '1234.5'));
+        test('Normalisation : symboles', () => assert(normalizeExpression('2×π') === '2*pi'));
+        test('Normalisation : puissance double', () => assert(normalizeExpression('2**3') === '2^3'));
+        test('Normalisation : pourcentage intact', () => assert(normalizeExpression('100+10%') === '100+10%'));
+        test('Incomplétude : 2+', () => assert(isProbablyIncomplete('2+') === true));
+        test('Incomplétude : 2+3', () => assert(isProbablyIncomplete('2+3') === false));
+
+        renderTestResults(results);
+      }
+
+      function renderTestResults(results) {
+        const passed = results.filter((result) => result.pass).length;
+        const failed = results.length - passed;
+        els.testContent.innerHTML = '';
+
+        const summary = document.createElement('div');
+        summary.className = 'test-summary ' + (failed ? 'is-fail' : 'is-pass');
+        summary.textContent = `${passed} / ${results.length} tests réussis` + (failed ? ` — ${failed} échec(s)` : ' — tout est bon');
+        els.testContent.appendChild(summary);
+
+        const list = document.createElement('ol');
+        list.className = 'test-list';
+        for (const result of results) {
+          const item = document.createElement('li');
+          item.className = 'test-item ' + (result.pass ? 'is-pass' : 'is-fail');
+          const icon = document.createElement('span');
+          icon.className = 'test-icon';
+          icon.textContent = result.pass ? '✓' : '✕';
+          const body = document.createElement('span');
+          body.className = 'test-name';
+          body.textContent = result.name;
+          if (!result.pass && result.detail) {
+            const detail = document.createElement('span');
+            detail.className = 'test-detail';
+            detail.textContent = result.detail;
+            body.appendChild(detail);
+          }
+          item.append(icon, body);
+          list.appendChild(item);
+        }
+        els.testContent.appendChild(list);
+
+        if (!els.testDialog.open) els.testDialog.showModal();
+        els.testClose.focus();
+      }
+
+      function initTests() {
+        els.testRerun.addEventListener('click', runSelfTests);
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('test') === '1' || window.location.hash === '#test') {
+          setTimeout(runSelfTests, 80);
+        }
+      }
+
+      /* ================= Input & keypad wiring ================= */
+      function setNativeKeyboard(enabled) {
+        state.nativeKeyboard = !!enabled;
+        els.expression.setAttribute('inputmode', state.nativeKeyboard ? 'text' : 'none');
+        els.nativeKeyboardBtn.setAttribute('aria-pressed', String(state.nativeKeyboard));
+        els.nativeKeyboardBtn.textContent = state.nativeKeyboard ? '123' : 'ABC';
+        els.nativeKeyboardBtn.setAttribute('aria-label', state.nativeKeyboard ? 'Revenir au clavier virtuel' : 'Activer le clavier du téléphone');
+        if (state.nativeKeyboard) {
+          els.expression.blur();
+          els.expression.focus();
+        }
+      }
+
+      function initInput() {
+        els.expression.addEventListener('input', updatePreview);
+
+        els.expression.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            commit();
+            return;
+          }
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            clearEntry();
+            return;
+          }
+          if ((event.ctrlKey || event.metaKey) && event.key === 'Backspace') {
+            event.preventDefault();
+            clearAll();
+            return;
+          }
+          if (event.key === '?') {
+            event.preventDefault();
+            openHelp();
+            return;
+          }
+
+          const input = els.expression;
+          const start = input.selectionStart == null ? input.value.length : input.selectionStart;
+          const end = input.selectionEnd == null ? start : input.selectionEnd;
+
+          if (event.key === '(' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            event.preventDefault();
+            insertParen('(');
+            return;
+          }
+
+          if (event.key === ')' && start === end && input.value[start] === ')') {
+            event.preventDefault();
+            setCaret(start + 1);
+            return;
+          }
+
+          if (event.key === 'Backspace' && start === end && input.value[start - 1] === '(' && input.value[start] === ')') {
+            event.preventDefault();
+            backspace();
+            return;
+          }
+
+          const operatorMap = { '+': '+', '-': '−', '*': '×', '/': '÷', '^': '^', '%': '%', '!': '!' };
+          if (state.lastResult !== null && input.value.trim() === '' && operatorMap[event.key]) {
+            event.preventDefault();
+            insertToken(operatorMap[event.key]);
+            return;
+          }
+
+          if ((event.key === '.' || event.key === ',') && input.value.trim() === '') {
+            event.preventDefault();
+            insertText('0,');
+          }
+        });
+
+        els.nativeKeyboardBtn.addEventListener('click', () => {
+          setNativeKeyboard(!state.nativeKeyboard);
+        });
+
+        document.addEventListener('keydown', (event) => {
+          if (event.key !== '?') return;
+          const target = event.target;
+          const isField = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT');
+          if (!isField) {
+            event.preventDefault();
+            openHelp();
+          }
+        });
+      }
+
+      function initKeypad() {
+        renderKeypad();
+        els.keypad.addEventListener('mousedown', (event) => {
+          if (event.target.closest('button')) event.preventDefault();
+        });
+      }
+
+      function initHeader() {
+        els.angleToggle.addEventListener('click', () => {
+          setAngle(state.angle === 'DEG' ? 'RAD' : 'DEG');
+        });
+        els.copyResult.addEventListener('click', () => {
+          const value = getCurrentValue();
+          if (value === null) {
+            showToast('Aucun résultat à copier.', 'error');
+            return;
+          }
+          copyText(valueToText(value));
+        });
+        els.memClear.addEventListener('click', memoryClear);
+        els.memRecall.addEventListener('click', memoryRecall);
+        els.memAdd.addEventListener('click', () => memoryAdd(1));
+        els.memSub.addEventListener('click', () => memoryAdd(-1));
+      }
+
+      /* ================= Boot ================= */
+      function showFatalError(error) {
+        document.body.classList.remove('is-loading');
+        const banner = document.createElement('div');
+        banner.className = 'fatal-banner';
+        banner.textContent = 'Impossible de charger le moteur de calcul math.js. Vérifie ta connexion internet, puis recharge la page.';
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'btn';
+        retry.style.marginLeft = '8px';
+        retry.textContent = 'Réessayer';
+        retry.addEventListener('click', () => window.location.reload());
+        banner.appendChild(retry);
+        if (els.display) els.display.prepend(banner);
+        if (els.expression) els.expression.disabled = true;
+        if (els.keypad) els.keypad.querySelectorAll('button').forEach((button) => { button.disabled = true; });
+        if (els.computeMatrix) els.computeMatrix.disabled = true;
+        console.error(error);
+      }
+
+      function initApp() {
+        updateAngleUI();
+        updateMemoryUI();
+        updateLastExpression();
+        setResult(state.lastResult, false);
+
+        initKeypad();
+        initInput();
+        initHeader();
+        initChips();
+        initComplexPanel();
+        initMatrixPanel();
+        initHistory();
+        initDialogs();
+        initTabs();
+        initTests();
+
+        setNativeKeyboard(false);
+        setActiveTab(state.activeTab);
+        document.body.classList.remove('is-loading');
+
+        if (!storageAvailable) {
+          setTimeout(() => showToast('Historique non persistant : localStorage est bloqué par le navigateur.', 'error'), 700);
+        }
+
+        if (window.matchMedia && window.matchMedia('(pointer: fine)').matches) {
+          setTimeout(() => els.expression.focus(), 80);
+        }
+      }
+
+      async function boot() {
+        cacheElements();
+        loadSettings();
+        loadHistory();
+        try {
+          await loadMath();
+          setupMath();
+          initApp();
+        } catch (error) {
+          showFatalError(error);
+        }
+      }
+
+      boot();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SciCalc — Calculatrice scientifique</title>
+<meta name="description" content="SciCalc : calculatrice scientifique avec étapes détaillées, convertisseur d'unités, solveur d'équations et résolution d'exercices par photo.">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="assets/katex/katex.min.css" onerror="this.remove()">
+</head>
+<body>
+<div class="bg-glow" aria-hidden="true">
+  <span class="glow glow-1"></span>
+  <span class="glow glow-2"></span>
+  <span class="glow glow-3"></span>
+</div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">SC</span>
+    <span class="brand-name">SciCalc</span>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab active" data-tab="calc" role="tab" aria-selected="true">🧮 Calculatrice</button>
+    <button class="tab" data-tab="convert" role="tab" aria-selected="false">📐 Convertisseur</button>
+    <button class="tab" data-tab="solver" role="tab" aria-selected="false">⚖️ Solveur</button>
+    <button class="tab" data-tab="photo" role="tab" aria-selected="false">📷 Photo</button>
+    <button class="tab" data-tab="settings" role="tab" aria-selected="false">⚙️ Réglages</button>
+  </nav>
+</header>
+
+<main class="workspace">
+
+  <!-- ══════════ ONGLET CALCULATRICE ══════════ -->
+  <section class="panel active" id="panel-calc">
+    <div class="calc-card glass">
+
+      <div class="display">
+        <div class="display-badges">
+          <span class="badge badge-angle" id="badge-angle">DEG</span>
+          <span class="badge badge-2nd hidden" id="badge-2nd">2nd</span>
+          <span class="badge badge-mem hidden" id="badge-mem">M</span>
+          <span class="spacer"></span>
+          <button class="icon-btn" id="btn-copy" title="Copier le résultat" aria-label="Copier le résultat">⧉</button>
+        </div>
+        <div class="display-expr" id="display-expr" aria-label="Expression en cours de saisie" tabindex="0"></div>
+        <div class="display-result" id="display-result" aria-label="Résultat" tabindex="0"></div>
+        <div class="display-extra" id="display-extra"></div>
+      </div>
+
+      <div class="keypad" id="keypad" role="group" aria-label="Clavier de la calculatrice"></div>
+    </div>
+
+    <aside class="side-panel glass">
+      <div class="side-tabs" role="tablist" aria-label="Panneau latéral">
+        <button class="side-tab active" data-side="steps" role="tab" aria-selected="true">Étapes</button>
+        <button class="side-tab" data-side="history" role="tab" aria-selected="false">Historique</button>
+      </div>
+      <div class="side-body">
+        <div class="side-view active" id="view-steps">
+          <ol class="steps-list" id="steps-list"></ol>
+          <p class="side-empty steps-empty-msg">Appuyez sur <b>=</b> pour décomposer le calcul étape par étape.</p>
+        </div>
+        <div class="side-view" id="view-history">
+          <div class="history-tools">
+            <input type="search" id="history-search" placeholder="Rechercher…" aria-label="Rechercher dans l'historique">
+            <button class="icon-btn danger" id="btn-clear-history" title="Effacer l'historique" aria-label="Effacer l'historique">🗑</button>
+          </div>
+          <ul class="history-list" id="history-list"></ul>
+          <p class="side-empty history-empty-msg">Aucun calcul enregistré pour l'instant.</p>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <!-- ══════════ ONGLET CONVERTISSEUR ══════════ -->
+  <section class="panel" id="panel-convert">
+    <div class="page-card glass">
+      <h2>Convertisseur d'unités</h2>
+      <div class="conv-cats chips" id="conv-cats"></div>
+      <div class="conv-row">
+        <input type="text" id="conv-input" inputmode="decimal" placeholder="Valeur…" aria-label="Valeur à convertir">
+        <button class="icon-btn big" id="conv-swap" title="Inverser" aria-label="Inverser les unités">⇅</button>
+      </div>
+      <div class="conv-selects">
+        <select id="conv-from" aria-label="Unité source"></select>
+        <span class="conv-arrow">→</span>
+        <select id="conv-to" aria-label="Unité cible"></select>
+      </div>
+      <div class="conv-result" id="conv-result" aria-live="polite"></div>
+      <div class="conv-formula" id="conv-formula"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ ONGLET SOLVEUR ══════════ -->
+  <section class="panel" id="panel-solver">
+    <div class="page-card glass">
+      <h2>Solveur d'équations</h2>
+      <div class="chips" id="solver-modes">
+        <button class="chip active" data-mode="lin1">1er degré : ax + b = c</button>
+        <button class="chip" data-mode="lin2">2nd degré : ax² + bx + c = 0</button>
+        <button class="chip" data-mode="sys">Système 2×2</button>
+        <button class="chip" data-mode="tva">Pourcentages / TVA</button>
+      </div>
+
+      <div class="solver-inputs" id="solver-inputs"></div>
+      <button class="btn-primary" id="btn-solve">Résoudre</button>
+      <div class="solver-steps" id="solver-steps"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ ONGLET PHOTO ══════════ -->
+  <section class="panel" id="panel-photo">
+    <div class="page-card glass">
+      <h2>Résoudre un exercice par photo</h2>
+      <p class="page-note" id="photo-requirement">
+        Cette fonction nécessite une clé API Gemini gratuite (offline jusqu'à l'envoi).
+        <a href="#" class="link" id="photo-goto-settings">Ajouter une clé dans Réglages</a>.
+      </p>
+
+      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choisir ou déposer une photo d'exercice">
+        <div class="dz-inner">
+          <span class="dz-icon">📷</span>
+          <b>Glissez une photo ici</b>
+          <span>ou cliquez pour choisir — photo manuscrite ou imprimée</span>
+          <span class="dz-rule">JPG / PNG · visible jusqu'à 1600 px</span>
+        </div>
+        <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
+      </div>
+
+      <div class="photo-preview hidden" id="photo-preview">
+        <img id="photo-img" alt="Aperçu de l'exercice">
+        <button class="icon-btn danger overlay" id="photo-remove" title="Retirer la photo" aria-label="Retirer la photo">✕</button>
+      </div>
+
+      <div class="photo-actions">
+        <select id="photo-extra" aria-label="Question ciblée">
+          <option value="solve">Résoudre l'exercice complet</option>
+          <option value="explain">Expliquer seulement la méthode</option>
+          <option value="extract">Extraire simplement l'énoncé</option>
+        </select>
+        <button class="btn-primary" id="btn-analyze">Analyser</button>
+      </div>
+
+      <div class="ai-status" id="ai-status" role="status"></div>
+      <div class="ai-result hidden" id="ai-result">
+        <div class="ai-enonce" id="ai-enonce"></div>
+        <ol class="ai-steps" id="ai-steps"></ol>
+        <div class="ai-answer" id="ai-answer"></div>
+        <button class="btn-secondary" id="btn-to-calc">↪ Envoyer le résultat à la calculatrice</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ ONGLET RÉGLAGES ══════════ -->
+  <section class="panel" id="panel-settings">
+    <div class="page-card glass">
+      <h2>Réglages</h2>
+
+      <div class="setting-row">
+        <label for="set-theme">Thème</label>
+        <select id="set-theme">
+          <option value="dark">Sombre néon (par défaut)</option>
+          <option value="light">Clair minimaliste</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <label for="set-angle">Mesure des angles</label>
+        <select id="set-angle">
+          <option value="DEG">Degrés (DEG)</option>
+          <option value="RAD">Radians (RAD)</option>
+          <option value="GRAD">Grades (GRAD)</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <label for="set-steps">Panneau d'étapes</label>
+        <select id="set-steps">
+          <option value="on">Afficher à chaque « = »</option>
+          <option value="auto">Restaurer la dernière session</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <label for="set-sound">Sons clavier</label>
+        <select id="set-sound">
+          <option value="off">Désactivés</option>
+          <option value="on">Activés</option>
+        </select>
+      </div>
+
+      <h3 class="settings-sub">IA Gemini (résolution photo)</h3>
+      <div class="setting-row key-row">
+        <label for="set-apikey">Clé API</label>
+        <input type="password" id="set-apikey" placeholder="AIza…" autocomplete="off">
+        <button class="icon-btn" id="btn-reveal-key" title="Afficher / masquer" aria-label="Afficher ou masquer la clé">👁</button>
+      </div>
+      <p class="page-note">Stockée uniquement dans ce navigateur. <a href="https://aistudio.google.com/app/apikey" class="link" target="_blank" rel="noopener">Obtenir une clé gratuite</a></p>
+
+      <div class="setting-row">
+        <label for="set-model">Modèle</label>
+        <select id="set-model">
+          <option value="gemini-2.5-flash">gemini-2.5-flash (recommandé)</option>
+          <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite (rapide)</option>
+          <option value="gemini-2.0-flash">gemini-2.0-flash (compatibilité)</option>
+        </select>
+      </div>
+
+      <div class="settings-actions">
+        <button class="btn-primary" id="btn-save-settings">Enregistrer</button>
+        <button class="btn-secondary" id="btn-reset-settings" title="Effacer tous les réglages, l'historique et la mémoire">Tout effacer</button>
+      </div>
+      <p class="settings-saved-msg hidden" id="settings-saved">✔ Réglages enregistrés</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footbar" id="footbar"></footer>
+
+<script src="assets/katex/katex.min.js" onerror="window.__noKaTeX=true"></script>
+
+<script src="js/engine.js"></script>
+<script src="js/steps.js"></script>
+<script src="js/history.js"></script>
+<script src="js/converter.js"></script>
+<script src="js/solver.js"></script>
+<script src="js/photo.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
