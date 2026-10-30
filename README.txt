@@ -1,0 +1,1 @@
+Ceci est une calcul atrice multifonctionnelle permettant d'effectuer plusieurs opérations complexes à la fois.
